@@ -766,7 +766,15 @@ export default function App() {
             color: "rgba(255,255,255,0.25)"
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 4,
+              width: "100%"
+            }}
+          >
             <button
               onClick={saveManualRow}
               disabled={manualCount === 0}
@@ -781,13 +789,32 @@ export default function App() {
                 letterSpacing: 1,
                 textTransform: "uppercase",
                 cursor: manualCount > 0 ? "pointer" : "not-allowed",
-                fontFamily: "Outfit,sans-serif"
+                fontFamily: "Outfit,sans-serif",
+                flexShrink: 0
               }}
             >
               Save {manualCount}
             </button>
+            {topDraw && (
+              <span
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  textAlign: "center",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  letterSpacing: 1,
+                  textTransform: "none",
+                  color: topRowColor,
+                  lineHeight: 1.25
+                }}
+              >
+                {formatDrawDateJackpot(topDraw.date, topDraw.jackpot)}
+              </span>
+            )}
+            {!topDraw && <span style={{ flex: 1, minWidth: 0 }} aria-hidden="true" />}
             {savedRows.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                 <button
                   onClick={() => setSavedOpen((prev) => !prev)}
                   style={{
@@ -939,32 +966,10 @@ export default function App() {
           fontWeight: 300,
           letterSpacing: 3,
           textTransform: "uppercase",
-          color: "rgba(255,255,255,0.25)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          gap: 8,
-          position: "relative"
+          color: "rgba(255,255,255,0.25)"
         }}
       >
         <span>Rows</span>
-        {topDraw && (
-          <span
-            style={{
-              position: "absolute",
-              left: "50%",
-              transform: "translateX(-50%)",
-              fontSize: 14,
-              fontWeight: 500,
-              letterSpacing: 1,
-              textTransform: "none",
-              color: topRowColor,
-              paddingBottom: 4
-            }}
-          >
-            {formatDrawDateJackpot(topDraw.date, topDraw.jackpot)}
-          </span>
-        )}
       </div>
 
       <div
