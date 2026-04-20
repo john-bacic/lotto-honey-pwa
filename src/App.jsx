@@ -517,9 +517,9 @@ export default function App() {
     <div
       onContextMenu={(e) => e.preventDefault()}
       style={{
-        ...(standalonePwa
-          ? { flex: 1, minHeight: 0, overflow: "hidden" }
-          : { flex: "none", minHeight: "100svh", height: "auto", overflow: "visible" }),
+        flex: 1,
+        minHeight: 0,
+        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
@@ -654,16 +654,17 @@ export default function App() {
         </select>
       </div>
 
-      <div
-        style={{
-          flex: "0 0 auto",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          paddingTop: 0
-        }}
-      >
+      <div style={{ flexShrink: 0, background: "#0c0c14", zIndex: 2 }}>
+        <div
+          style={{
+            flex: "0 0 auto",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            paddingTop: 0
+          }}
+        >
         <div style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center" }}>
           <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
             <div ref={mountRef} style={{ width: "100%", height: CANVAS_H }} />
@@ -906,13 +907,15 @@ export default function App() {
           </span>
         )}
       </div>
+      </div>
 
       <div
         ref={rowsRef}
         style={{
-          ...(standalonePwa
-            ? { flex: 1, minHeight: 0, overflowY: "auto" }
-            : { flex: "none", overflowY: "visible" }),
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
           padding: `4px 12px ${rowsScrollBottomPad}`
         }}
       >
