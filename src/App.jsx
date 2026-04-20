@@ -156,6 +156,33 @@ export default function App() {
   const [labelPos, setLabelPos] = useState([]);
   const rowsRef = useRef(null);
 
+  function readStandalonePwa() {
+    if (typeof window === "undefined") return false;
+    try {
+      const ios = window.navigator && window.navigator.standalone === true;
+      const dm = (q) => window.matchMedia(q).matches;
+      return (
+        ios ||
+        dm("(display-mode: standalone)") ||
+        dm("(display-mode: fullscreen)") ||
+        dm("(display-mode: minimal-ui)")
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  const [standalonePwa, setStandalonePwa] = useState(readStandalonePwa);
+
+  useEffect(() => {
+    function checkStandalone() {
+      setStandalonePwa(readStandalonePwa());
+    }
+    const mq = window.matchMedia("(display-mode: standalone)");
+    mq.addEventListener("change", checkStandalone);
+    return () => mq.removeEventListener("change", checkStandalone);
+  }, []);
+
   const onionCount = onionIdx === 0 ? 0 : ONION_LEVELS[onionIdx - 1];
 
   const gridMode = useMemo(() => {
@@ -481,6 +508,10 @@ export default function App() {
   const hasManualClear = activeNums.size > 0;
   const topDraw = currentRow >= 0 ? ROWS[currentRow] : null;
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
+
+  const rowsScrollBottomPad = standalonePwa
+    ? `calc(${NAV_H + 20}px + env(safe-area-inset-bottom, 0px))`
+    : `calc(24px + env(safe-area-inset-bottom, 0px))`;
 
   return (
     <div
@@ -882,7 +913,7 @@ export default function App() {
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
-          padding: `4px 12px calc(${NAV_H + 20}px + env(safe-area-inset-bottom, 0px))`
+          padding: `4px 12px ${rowsScrollBottomPad}`
         }}
       >
         {ROWS.map((row, ri) => {
@@ -1005,61 +1036,62 @@ export default function App() {
         })}
       </div>
 
-      {/* Outer: safe-area only (border-box height+padding was crushing controls in standalone PWA) */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 20,
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-          background: "rgba(12,12,20,0.95)",
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)"
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 24,
-            minHeight: NAV_H + 8,
-            paddingTop: 8,
-            paddingBottom: 8
-          }}
-        >
-          <NavButton dir={1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atBottomBoundary} />
-          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 60, justifyContent: "center" }}>
-            {currentRow >= 0 ? (
-              <>
-                <div
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: "50%",
-                    background: ROW_COLORS[currentRow % ROW_COLORS.length],
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "#fff"
-                  }}
-                >
-                  {currentRow + 1}
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 400, color: "rgba(255,255,255,0.35)" }}>/ {ROWS.length}</span>
-              </>
-            ) : (
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>-</span>
-            )}
+      {standalonePwa && (
+          <div
+            style={{
+              position: "fixed",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 20,
+              paddingBottom: "env(safe-area-inset-bottom, 0px)",
+              background: "rgba(12,12,20,0.95)",
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)"
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 24,
+                minHeight: NAV_H + 8,
+                paddingTop: 8,
+                paddingBottom: 8
+              }}
+            >
+              <NavButton dir={1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atBottomBoundary} />
+              <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 60, justifyContent: "center" }}>
+                {currentRow >= 0 ? (
+                  <>
+                    <div
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        background: ROW_COLORS[currentRow % ROW_COLORS.length],
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#fff"
+                      }}
+                    >
+                      {currentRow + 1}
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 400, color: "rgba(255,255,255,0.35)" }}>/ {ROWS.length}</span>
+                  </>
+                ) : (
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>-</span>
+                )}
+              </div>
+              <NavButton dir={-1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atTopBoundary} />
+            </div>
           </div>
-          <NavButton dir={-1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atTopBoundary} />
-        </div>
-      </div>
+      )}
     </div>
   );
 }
