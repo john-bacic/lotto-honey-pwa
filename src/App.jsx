@@ -28,7 +28,7 @@ const HEX_H = 2 * HEX_R;
 const COL_S = HEX_W + 2;
 const ROW_S = HEX_H * 0.75 + 1.5;
 const CANVAS_H = 370;
-const NAV_H = 56;
+const NAV_H = 68;
 const ONION_LEVELS = [2, 3, 5, 8, 13, 21];
 
 const ROWS = getDrawRows();
