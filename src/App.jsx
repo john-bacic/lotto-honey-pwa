@@ -22,12 +22,12 @@ const ROW_COLORS = [
 const GRID_50 = [4, 5, 6, 7, 6, 7, 6, 5, 4];
 const GRID_52 = [4, 5, 6, 7, 8, 7, 6, 5, 4];
 
-const HEX_R = 20;
+const HEX_R = 22;
 const HEX_W = Math.sqrt(3) * HEX_R;
 const HEX_H = 2 * HEX_R;
 const COL_S = HEX_W + 2;
 const ROW_S = HEX_H * 0.75 + 1.5;
-const CANVAS_H = 370;
+const CANVAS_H = 430;
 const NAV_H = 68;
 const ONION_LEVELS = [2, 3, 5, 8, 13, 21];
 
@@ -149,12 +149,29 @@ export default function App() {
   const [savedRows, setSavedRows] = useState([]);
   const [nextSavedNumber, setNextSavedNumber] = useState(1);
   const [savedOpen, setSavedOpen] = useState(true);
-  const [savedLocked, setSavedLocked] = useState(false);
+  const [savedLocked, setSavedLocked] = useState(true);
   const [onionIdx, setOnionIdx] = useState(0);
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const [labelPos, setLabelPos] = useState([]);
   const rowsRef = useRef(null);
+  const scrollRootRef = useRef(null);
+  const pinnedHeaderRef = useRef(null);
+
+  const scrollRowIntoViewBelowPinned = useCallback((ri, behavior = "smooth") => {
+    const root = scrollRootRef.current;
+    const pinned = pinnedHeaderRef.current;
+    const cards = rowsRef.current?.querySelectorAll("[data-ri]");
+    const card = cards?.[ri];
+    if (!root || !pinned || !card) return;
+    const stickyH = pinned.getBoundingClientRect().height;
+    const rootRect = root.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const diff = cardRect.top - rootRect.top;
+    const delta = diff - stickyH;
+    if (Math.abs(delta) < 1) return;
+    root.scrollTo({ top: root.scrollTop + delta, behavior });
+  }, []);
 
   function readStandalonePwa() {
     if (typeof window === "undefined") return false;
@@ -294,28 +311,19 @@ export default function App() {
         if (next < 0) next = allowLoop ? ROWS.length - 1 : 0;
         if (next >= ROWS.length) next = allowLoop ? 0 : ROWS.length - 1;
       }
-      if (next !== prev) {
-        setTimeout(() => {
-          const cards = rowsRef.current?.querySelectorAll("[data-ri]");
-          if (cards?.[next]) cards[next].scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 50);
-      }
       return next;
     });
   }
 
   useEffect(() => {
     if (currentRow < 0) return;
-    const container = rowsRef.current;
-    const cards = container?.querySelectorAll("[data-ri]");
-    const card = cards?.[currentRow];
-    if (!container || !card) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const cardRect = card.getBoundingClientRect();
-    const topDiff = Math.abs(cardRect.top - containerRect.top);
-    if (topDiff > 2) card.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [currentRow]);
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollRowIntoViewBelowPinned(currentRow, "smooth");
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [currentRow, scrollRowIntoViewBelowPinned]);
 
   useEffect(() => {
     function onKeyDown(event) {
@@ -363,10 +371,11 @@ export default function App() {
     const scene = new THREE.Scene();
     const cam = new THREE.OrthographicCamera(-camW / 2, camW / 2, camH / 2, -camH / 2, 1, 100);
     cam.position.z = 10;
-    const ren = new THREE.WebGLRenderer({ antialias: true });
+    const ren = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     ren.setSize(cW, cH);
     ren.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    ren.setClearColor(0x0c0c14);
+    ren.setClearColor(0x000000, 0);
+    ren.domElement.style.background = "transparent";
     el.appendChild(ren.domElement);
 
     const shape = new THREE.Shape();
@@ -519,11 +528,11 @@ export default function App() {
       style={{
         flex: 1,
         minHeight: 0,
-        overflow: "hidden",
+        width: "100%",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
-        paddingTop: "env(safe-area-inset-top, 0px)",
         paddingLeft: "env(safe-area-inset-left, 0px)",
         paddingRight: "env(safe-area-inset-right, 0px)",
         background: "#0c0c14",
@@ -534,238 +543,288 @@ export default function App() {
         WebkitTouchCallout: "none"
       }}
     >
-      <button
-        onClick={clearAll}
-        style={{
-          position: "fixed",
-          top: "calc(8px + env(safe-area-inset-top, 0px))",
-          left: "calc(8px + env(safe-area-inset-left, 0px))",
-          zIndex: 30,
-          width: 44,
-          height: 44,
-          border: "none",
-          padding: 0,
-          background: "transparent",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer"
-        }}
-      >
-        <svg
-          width="44"
-          height="44"
-          viewBox="0 0 100 100"
-          style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-          aria-hidden="true"
-        >
-          <polygon
-            points="50,2 93,25 93,75 50,98 7,75 7,25"
-            fill={canTurnOff ? "rgba(18,20,30,0.98)" : "rgba(255,255,255,0.05)"}
-            stroke={
-              hasRowLikeSelection
-                ? "rgba(239,68,68,0.98)"
-                : "rgba(10,12,18,0.95)"
-            }
-            strokeWidth="4"
-          />
-          {hasManualClear && (
-            <polygon
-              points="50,11 85,30 85,70 50,89 15,70 15,30"
-              fill="none"
-              stroke="rgba(239,68,68,0.98)"
-              strokeWidth="4"
-            />
-          )}
-        </svg>
-        <span
-          style={{
-            position: "relative",
-            zIndex: 1,
-            width: 12,
-            height: 2,
-            borderRadius: 999,
-            background: canTurnOff ? "rgba(239,68,68,0.98)" : "rgba(255,255,255,0.35)"
-          }}
-        />
-      </button>
-
       <div
+        ref={scrollRootRef}
         style={{
-          position: "fixed",
-          top: "calc(12px + env(safe-area-inset-top, 0px))",
-          right: "calc(12px + env(safe-area-inset-right, 0px))",
-          zIndex: 30,
-          height: 32,
-          borderRadius: 999,
-          padding: "0 10px",
+          flex: 1,
+          minHeight: 0,
+          width: "100%",
+          overflowY: "auto",
+          overflowX: "hidden",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehaviorY: "contain",
           display: "flex",
-          alignItems: "center",
-          gap: 6,
-          background: onionCount > 0 ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
-          border: `1px solid ${onionCount > 0 ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)"}`,
-          color: onionCount > 0 ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)",
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: 1,
-          fontFamily: "'Outfit', -apple-system, sans-serif"
+          flexDirection: "column"
         }}
       >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={onionCount > 0 ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)"}
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12 2C6.5 6 4 9.5 4 13a8 8 0 0016 0c0-3.5-2.5-7-8-11z" />
-          <path d="M12 6c-3.5 2.5-5 5-5 8a5 5 0 0010 0c0-3-1.5-5.5-5-8z" opacity="0.5" />
-        </svg>
-        {onionCount > 0 && <span>{onionCount}</span>}
-        {onionCount > 0 && (
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.65 }}>
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        )}
-        <select
-          aria-label="Onion skin level"
-          value={onionIdx}
-          onChange={(e) => setOnionIdx(Number(e.target.value))}
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0,
-            width: "100%",
-            height: "100%",
-            border: "none",
-            cursor: "pointer",
-            outline: "none"
-          }}
-        >
-          <option value={0}>off</option>
-          {ONION_LEVELS.map((level, idx) => (
-            <option key={level} value={idx + 1}>
-              {level}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div style={{ flexShrink: 0, background: "#0c0c14", zIndex: 2 }}>
+      <div
+        ref={pinnedHeaderRef}
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          flexShrink: 0,
+          width: "100%",
+          background: "rgba(12, 12, 20, 0.9)",
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)"
+        }}
+      >
         <div
           style={{
-            flex: "0 0 auto",
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            paddingLeft: 14,
+            paddingRight: 14,
+            paddingTop: 6,
+            paddingBottom: 0,
+            boxSizing: "border-box",
+            flexShrink: 0
+          }}
+        >
+          <button
+            onClick={clearAll}
+            style={{
+              position: "relative",
+              width: 44,
+              height: 44,
+              border: "none",
+              padding: 0,
+              background: "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              flexShrink: 0
+            }}
+          >
+            <svg
+              width="44"
+              height="44"
+              viewBox="0 0 100 100"
+              style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+              aria-hidden="true"
+            >
+              <polygon
+                points="50,2 93,25 93,75 50,98 7,75 7,25"
+                fill={canTurnOff ? "rgba(18,20,30,0.98)" : "rgba(255,255,255,0.05)"}
+                stroke={
+                  hasRowLikeSelection
+                    ? "rgba(239,68,68,0.98)"
+                    : "rgba(10,12,18,0.95)"
+                }
+                strokeWidth="4"
+              />
+              {hasManualClear && (
+                <polygon
+                  points="50,11 85,30 85,70 50,89 15,70 15,30"
+                  fill="none"
+                  stroke="rgba(239,68,68,0.98)"
+                  strokeWidth="4"
+                />
+              )}
+            </svg>
+            <span
+              style={{
+                position: "relative",
+                zIndex: 1,
+                width: 12,
+                height: 2,
+                borderRadius: 999,
+                background: canTurnOff ? "rgba(239,68,68,0.98)" : "rgba(255,255,255,0.35)"
+              }}
+            />
+          </button>
+
+          <div
+            style={{
+              position: "relative",
+              height: 32,
+              borderRadius: 999,
+              padding: "0 10px",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: onionCount > 0 ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${onionCount > 0 ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)"}`,
+              color: onionCount > 0 ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)",
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: 1,
+              fontFamily: "'Outfit', -apple-system, sans-serif",
+              flexShrink: 0
+            }}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={onionCount > 0 ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)"}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 2C6.5 6 4 9.5 4 13a8 8 0 0016 0c0-3.5-2.5-7-8-11z" />
+              <path d="M12 6c-3.5 2.5-5 5-5 8a5 5 0 0010 0c0-3-1.5-5.5-5-8z" opacity="0.5" />
+            </svg>
+            {onionCount > 0 && <span>{onionCount}</span>}
+            {onionCount > 0 && (
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.65 }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            )}
+            <select
+              aria-label="Onion skin level"
+              value={onionIdx}
+              onChange={(e) => setOnionIdx(Number(e.target.value))}
+              style={{
+                position: "absolute",
+                inset: 0,
+                opacity: 0,
+                width: "100%",
+                height: "100%",
+                border: "none",
+                cursor: "pointer",
+                outline: "none"
+              }}
+            >
+              <option value={0}>off</option>
+              {ONION_LEVELS.map((level, idx) => (
+                <option key={level} value={idx + 1}>
+                  {level}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div
+          style={{
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            paddingTop: 0
+            paddingTop: 0,
+            marginTop: -18
           }}
         >
-        <div style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center" }}>
-          <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
-            <div ref={mountRef} style={{ width: "100%", height: CANVAS_H }} />
-            <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: CANVAS_H, pointerEvents: "auto" }}>
-              {labelPos.map(({ num: n, left, top }) => {
-                const info = numBrightness[n];
-                const b = info ? info.brightness : 0;
-                const isOn = Boolean(info);
-                const isManuallySelected = activeNums.has(n);
-                const isBlocked = manualLimitReached && !isManuallySelected;
-                const textOpacity = isBlocked ? 0.12 : !anyActive ? 0.55 : isOn ? 0.15 + b * 0.85 : 0.35;
-                return (
-                  <div
-                    key={n}
-                    onClick={() => {
-                      if (!isBlocked) toggleNum(n);
-                    }}
-                    style={{
-                      position: "absolute",
-                      left,
-                      top,
-                      transform: "translate(-50%, -50%)",
-                      width: 34,
-                      height: 34,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: isBlocked ? "rgba(40,40,40,0.95)" : `rgba(255,255,255,${textOpacity})`,
-                      textShadow: textOpacity > 0.6 ? "0 1px 3px rgba(0,0,0,0.5)" : "none",
-                      pointerEvents: "auto",
-                      cursor: isBlocked ? "not-allowed" : "pointer"
-                    }}
-                  >
-                    {n}
-                  </div>
-                );
-              })}
+          <div style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center" }}>
+            <div style={{ position: "relative", width: "100%", maxWidth: 480 }}>
+              <div ref={mountRef} style={{ width: "100%", height: CANVAS_H }} />
+              <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: CANVAS_H, pointerEvents: "auto" }}>
+                {labelPos.map(({ num: n, left, top }) => {
+                  const info = numBrightness[n];
+                  const b = info ? info.brightness : 0;
+                  const isOn = Boolean(info);
+                  const isManuallySelected = activeNums.has(n);
+                  const isBlocked = manualLimitReached && !isManuallySelected;
+                  const textOpacity = isBlocked ? 0.12 : !anyActive ? 0.55 : isOn ? 0.15 + b * 0.85 : 0.35;
+                  return (
+                    <div
+                      key={n}
+                      onClick={() => {
+                        if (!isBlocked) toggleNum(n);
+                      }}
+                      style={{
+                        position: "absolute",
+                        left,
+                        top,
+                        transform: "translate(-50%, -50%)",
+                        width: 34,
+                        height: 34,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: isBlocked ? "rgba(40,40,40,0.95)" : `rgba(255,255,255,${textOpacity})`,
+                        textShadow: textOpacity > 0.6 ? "0 1px 3px rgba(0,0,0,0.5)" : "none",
+                        pointerEvents: "auto",
+                        cursor: isBlocked ? "not-allowed" : "pointer"
+                      }}
+                    >
+                      {n}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div style={{ padding: "8px 14px 4px", flexShrink: 0, fontSize: 10, fontWeight: 300, letterSpacing: 3, textTransform: "uppercase", color: "rgba(255,255,255,0.25)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <button
-            onClick={saveManualRow}
-            disabled={manualCount === 0}
-            style={{
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: manualCount > 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
-              color: manualCount > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)",
-              borderRadius: 999,
-              height: 24,
-              padding: "0 10px",
-              fontSize: 10,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              cursor: manualCount > 0 ? "pointer" : "not-allowed",
-              fontFamily: "Outfit,sans-serif"
-            }}
-          >
-            Save {manualCount}
-          </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div
+          style={{
+            padding: "4px 14px 2px",
+            flexShrink: 0,
+            fontSize: 10,
+            fontWeight: 300,
+            letterSpacing: 3,
+            textTransform: "uppercase",
+            color: "rgba(255,255,255,0.25)"
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
             <button
-              onClick={() => setSavedOpen((prev) => !prev)}
+              onClick={saveManualRow}
+              disabled={manualCount === 0}
               style={{
                 border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.04)",
-                color: "rgba(255,255,255,0.6)",
+                background: manualCount > 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
+                color: manualCount > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)",
                 borderRadius: 999,
                 height: 24,
                 padding: "0 10px",
                 fontSize: 10,
                 letterSpacing: 1,
                 textTransform: "uppercase",
-                cursor: "pointer",
+                cursor: manualCount > 0 ? "pointer" : "not-allowed",
                 fontFamily: "Outfit,sans-serif"
               }}
             >
-              {savedOpen ? "Hide" : "Show"} ({savedRows.length})
+              Save {manualCount}
             </button>
-            <button
-              onClick={() => setSavedLocked((prev) => !prev)}
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: savedLocked ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer"
-              }}
-              title={savedLocked ? "Unlock all saved rows" : "Lock all saved rows"}
-            >
-              <LockIcon locked={savedLocked} color={savedLocked ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.6)"} />
-            </button>
+            {savedRows.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  onClick={() => setSavedOpen((prev) => !prev)}
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.6)",
+                    borderRadius: 999,
+                    height: 24,
+                    padding: "0 10px",
+                    fontSize: 10,
+                    letterSpacing: 1,
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    fontFamily: "Outfit,sans-serif"
+                  }}
+                >
+                  {savedOpen ? "Hide" : "Show"} ({savedRows.length})
+                </button>
+                <button
+                  onClick={() => setSavedLocked((prev) => !prev)}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: savedLocked ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer"
+                  }}
+                  title={savedLocked ? "Unlock all saved rows" : "Lock all saved rows"}
+                >
+                  <LockIcon locked={savedLocked} color={savedLocked ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.6)"} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -907,15 +966,10 @@ export default function App() {
           </span>
         )}
       </div>
-      </div>
 
       <div
         ref={rowsRef}
         style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
           padding: `4px 12px ${rowsScrollBottomPad}`
         }}
       >
@@ -1037,6 +1091,8 @@ export default function App() {
             </div>
           );
         })}
+      </div>
+
       </div>
 
       {standalonePwa && (
