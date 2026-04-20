@@ -31,3 +31,30 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/*
+ * iOS Safari: normal page scroll on window; sticky header uses position: sticky.
+ * Toggled from App via classList on <html>.
+ */
+html.doc-scroll-ios,
+html.doc-scroll-ios body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: visible;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #0c0c14;
+}
+
+html.doc-scroll-ios #root {
+  height: auto;
+  min-height: 100svh;
+  display: block;
+  overflow: visible;
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html.doc-scroll-ios #root {
+    min-height: 100dvh;
+  }
+}

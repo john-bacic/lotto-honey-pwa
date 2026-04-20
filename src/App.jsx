@@ -33,6 +33,15 @@ const ONION_LEVELS = [2, 3, 5, 8, 13, 21];
 
 const ROWS = getDrawRows();
 
+/** iOS Safari: use window scroll + sticky; inner overflow scroll is for other browsers. */
+function isIosSafariDocumentScroll() {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent;
+  if (!/iP(hone|ad|od)/.test(ua)) return false;
+  if (/CriOS|FxiOS|OPiOS|EdgiOS|GSA\//i.test(ua)) return false;
+  return /Safari/i.test(ua) && /AppleWebKit/i.test(ua);
+}
+
 function specHue(i, total) {
   return (i / Math.max(total - 1, 1)) * 300;
 }
@@ -158,20 +167,43 @@ export default function App() {
   const scrollRootRef = useRef(null);
   const pinnedHeaderRef = useRef(null);
 
-  const scrollRowIntoViewBelowPinned = useCallback((ri, behavior = "smooth") => {
-    const root = scrollRootRef.current;
-    const pinned = pinnedHeaderRef.current;
-    const cards = rowsRef.current?.querySelectorAll("[data-ri]");
-    const card = cards?.[ri];
-    if (!root || !pinned || !card) return;
-    const stickyH = pinned.getBoundingClientRect().height;
-    const rootRect = root.getBoundingClientRect();
-    const cardRect = card.getBoundingClientRect();
-    const diff = cardRect.top - rootRect.top;
-    const delta = diff - stickyH;
-    if (Math.abs(delta) < 1) return;
-    root.scrollTo({ top: root.scrollTop + delta, behavior });
-  }, []);
+  const [documentScrollIos] = useState(isIosSafariDocumentScroll);
+
+  useEffect(() => {
+    if (documentScrollIos) {
+      document.documentElement.classList.add("doc-scroll-ios");
+    }
+    return () => {
+      document.documentElement.classList.remove("doc-scroll-ios");
+    };
+  }, [documentScrollIos]);
+
+  const scrollRowIntoViewBelowPinned = useCallback(
+    (ri, behavior = "smooth") => {
+      const pinned = pinnedHeaderRef.current;
+      const cards = rowsRef.current?.querySelectorAll("[data-ri]");
+      const card = cards?.[ri];
+      if (!pinned || !card) return;
+      const stickyH = pinned.getBoundingClientRect().height;
+      const cardRect = card.getBoundingClientRect();
+
+      if (documentScrollIos) {
+        const delta = cardRect.top - stickyH;
+        if (Math.abs(delta) < 1) return;
+        window.scrollTo({ top: window.scrollY + delta, behavior });
+        return;
+      }
+
+      const root = scrollRootRef.current;
+      if (!root) return;
+      const rootRect = root.getBoundingClientRect();
+      const diff = cardRect.top - rootRect.top;
+      const delta = diff - stickyH;
+      if (Math.abs(delta) < 1) return;
+      root.scrollTo({ top: root.scrollTop + delta, behavior });
+    },
+    [documentScrollIos]
+  );
 
   function readStandalonePwa() {
     if (typeof window === "undefined") return false;
@@ -526,12 +558,21 @@ export default function App() {
     <div
       onContextMenu={(e) => e.preventDefault()}
       style={{
-        flex: 1,
-        minHeight: 0,
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
+        ...(documentScrollIos
+          ? {
+              width: "100%",
+              minHeight: "100%",
+              display: "flex",
+              flexDirection: "column"
+            }
+          : {
+              flex: 1,
+              minHeight: 0,
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column"
+            }),
         boxSizing: "border-box",
         paddingLeft: "env(safe-area-inset-left, 0px)",
         paddingRight: "env(safe-area-inset-right, 0px)",
@@ -544,18 +585,27 @@ export default function App() {
       }}
     >
       <div
-        ref={scrollRootRef}
-        style={{
-          flex: 1,
-          minHeight: 0,
-          width: "100%",
-          overflowY: "auto",
-          overflowX: "hidden",
-          WebkitOverflowScrolling: "touch",
-          overscrollBehaviorY: "contain",
-          display: "flex",
-          flexDirection: "column"
-        }}
+        ref={documentScrollIos ? undefined : scrollRootRef}
+        style={
+          documentScrollIos
+            ? {
+                display: "flex",
+                flexDirection: "column",
+                width: "100%",
+                minHeight: "min-content"
+              }
+            : {
+                flex: 1,
+                minHeight: 0,
+                width: "100%",
+                overflowY: "auto",
+                overflowX: "hidden",
+                WebkitOverflowScrolling: "touch",
+                overscrollBehaviorY: "contain",
+                display: "flex",
+                flexDirection: "column"
+              }
+        }
       >
       <div
         ref={pinnedHeaderRef}
