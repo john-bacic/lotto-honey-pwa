@@ -562,8 +562,7 @@ export default function App() {
           ? {
               width: "100%",
               minHeight: "100%",
-              display: "flex",
-              flexDirection: "column"
+              display: "block"
             }
           : {
               flex: 1,
@@ -589,8 +588,7 @@ export default function App() {
         style={
           documentScrollIos
             ? {
-                display: "flex",
-                flexDirection: "column",
+                display: "block",
                 width: "100%",
                 minHeight: "min-content"
               }
@@ -609,11 +607,16 @@ export default function App() {
       >
       <div
         ref={pinnedHeaderRef}
+        className={documentScrollIos ? "app-doc-scroll-pinned" : undefined}
         style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          flexShrink: 0,
+          ...(documentScrollIos
+            ? {}
+            : {
+                position: "sticky",
+                top: 0,
+                zIndex: 10,
+                flexShrink: 0
+              }),
           width: "100%",
           background: "rgba(12, 12, 20, 0.9)",
           paddingTop: "env(safe-area-inset-top, 0px)",

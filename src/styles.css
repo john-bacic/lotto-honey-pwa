@@ -42,7 +42,6 @@ html.doc-scroll-ios body {
   min-height: 100%;
   overflow-x: visible;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   background: #0c0c14;
 }
 
@@ -51,6 +50,17 @@ html.doc-scroll-ios #root {
   min-height: 100svh;
   display: block;
   overflow: visible;
+}
+
+/*
+ * iOS Safari: sticky inside display:flex is unreliable; App uses block layout.
+ * -webkit-sticky is required on older WebKit; keep rules in CSS (not inline).
+ */
+html.doc-scroll-ios .app-doc-scroll-pinned {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 @media (display-mode: standalone), (display-mode: fullscreen) {
