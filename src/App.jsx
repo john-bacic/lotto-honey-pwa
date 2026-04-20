@@ -486,23 +486,29 @@ export default function App() {
     <div
       onContextMenu={(e) => e.preventDefault()}
       style={{
+        flex: 1,
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        boxSizing: "border-box",
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingLeft: "env(safe-area-inset-left, 0px)",
+        paddingRight: "env(safe-area-inset-right, 0px)",
         background: "#0c0c14",
         fontFamily: "Outfit,sans-serif",
         color: "rgba(255,255,255,0.92)",
         userSelect: "none",
         WebkitUserSelect: "none",
-        WebkitTouchCallout: "none"
+        WebkitTouchCallout: "none",
+        overflow: "hidden"
       }}
     >
       <button
         onClick={clearAll}
         style={{
           position: "fixed",
-          top: 8,
-          left: 8,
+          top: "calc(8px + env(safe-area-inset-top, 0px))",
+          left: "calc(8px + env(safe-area-inset-left, 0px))",
           zIndex: 30,
           width: 44,
           height: 44,
@@ -556,8 +562,8 @@ export default function App() {
       <div
         style={{
           position: "fixed",
-          top: 12,
-          right: 12,
+          top: "calc(12px + env(safe-area-inset-top, 0px))",
+          right: "calc(12px + env(safe-area-inset-right, 0px))",
           zIndex: 30,
           height: 32,
           borderRadius: 999,
@@ -617,7 +623,16 @@ export default function App() {
         </select>
       </div>
 
-      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingTop: 0 }}>
+      <div
+        style={{
+          flex: "0 0 auto",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          paddingTop: 0
+        }}
+      >
         <div style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center" }}>
           <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
             <div ref={mountRef} style={{ width: "100%", height: CANVAS_H }} />
@@ -861,7 +876,15 @@ export default function App() {
         )}
       </div>
 
-      <div ref={rowsRef} style={{ flex: 1, overflowY: "auto", padding: `4px 12px ${NAV_H + 20}px` }}>
+      <div
+        ref={rowsRef}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          padding: `4px 12px calc(${NAV_H + 20}px + env(safe-area-inset-bottom, 0px))`
+        }}
+      >
         {ROWS.map((row, ri) => {
           const color = ROW_COLORS[ri % ROW_COLORS.length];
           const isCurrent = currentRow === ri;
@@ -998,7 +1021,7 @@ export default function App() {
           zIndex: 20,
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          paddingBottom: 8
+          paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))"
         }}
       >
         <NavButton dir={1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atBottomBoundary} />
