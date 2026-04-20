@@ -1,22 +1,40 @@
+/* Default: in-browser tab — page can scroll so iOS Safari chrome can show/hide */
 html,
 body {
   margin: 0;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  min-height: 100svh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: #0c0c14;
 }
 
 #root {
   margin: 0;
   width: 100%;
-  height: 100%;
-  min-height: 100%;
-  min-height: 100dvh;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   background: #0c0c14;
+}
+
+/* Installed PWA / fullscreen — lock viewport, internal scroll only */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html,
+  body {
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100%;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
 }
 
 * {

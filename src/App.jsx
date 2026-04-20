@@ -511,14 +511,15 @@ export default function App() {
 
   const rowsScrollBottomPad = standalonePwa
     ? `calc(${NAV_H + 20}px + env(safe-area-inset-bottom, 0px))`
-    : `calc(24px + env(safe-area-inset-bottom, 0px))`;
+    : "20px";
 
   return (
     <div
       onContextMenu={(e) => e.preventDefault()}
       style={{
-        flex: 1,
-        minHeight: 0,
+        ...(standalonePwa
+          ? { flex: 1, minHeight: 0, overflow: "hidden" }
+          : { flex: "none", minHeight: "100svh", height: "auto", overflow: "visible" }),
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
@@ -530,8 +531,7 @@ export default function App() {
         color: "rgba(255,255,255,0.92)",
         userSelect: "none",
         WebkitUserSelect: "none",
-        WebkitTouchCallout: "none",
-        overflow: "hidden"
+        WebkitTouchCallout: "none"
       }}
     >
       <button
@@ -910,9 +910,9 @@ export default function App() {
       <div
         ref={rowsRef}
         style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
+          ...(standalonePwa
+            ? { flex: 1, minHeight: 0, overflowY: "auto" }
+            : { flex: "none", overflowY: "visible" }),
           padding: `4px 12px ${rowsScrollBottomPad}`
         }}
       >
