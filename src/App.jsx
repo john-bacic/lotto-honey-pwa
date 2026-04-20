@@ -509,7 +509,6 @@ export default function App() {
           border: "none",
           padding: 0,
           background: "transparent",
-          position: "relative",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
