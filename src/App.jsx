@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import * as THREE from "three";
 import { getDrawRows } from "./lib/draws";
 
@@ -33,13 +33,21 @@ const ONION_LEVELS = [2, 3, 5, 8, 13, 21];
 
 const ROWS = getDrawRows();
 
-/** iOS Safari: use window scroll + sticky; inner overflow scroll is for other browsers. */
-function isIosSafariDocumentScroll() {
+/**
+ * iOS WebKit (Safari, home-screen PWA, iPadOS “desktop” Safari): window scroll +
+ * fixed header path. Excludes Chrome/Firefox/Edge on iOS. Inner overflow scroll for others.
+ */
+function isIosWebKitDocumentScroll() {
   if (typeof window === "undefined") return false;
-  const ua = window.navigator.userAgent;
-  if (!/iP(hone|ad|od)/.test(ua)) return false;
+  const ua = window.navigator.userAgent || "";
+  const iPadDesktopSafari =
+    typeof navigator !== "undefined" &&
+    navigator.platform === "MacIntel" &&
+    navigator.maxTouchPoints > 1;
+  const isIosDevice = /iP(hone|ad|od)/.test(ua) || iPadDesktopSafari;
+  if (!isIosDevice) return false;
   if (/CriOS|FxiOS|OPiOS|EdgiOS|GSA\//i.test(ua)) return false;
-  return /Safari/i.test(ua) && /AppleWebKit/i.test(ua);
+  return /AppleWebKit/i.test(ua);
 }
 
 function specHue(i, total) {
@@ -167,7 +175,8 @@ export default function App() {
   const scrollRootRef = useRef(null);
   const pinnedHeaderRef = useRef(null);
 
-  const [documentScrollIos] = useState(isIosSafariDocumentScroll);
+  const [documentScrollIos] = useState(isIosWebKitDocumentScroll);
+  const [iosHeaderSpacerPx, setIosHeaderSpacerPx] = useState(0);
 
   useEffect(() => {
     if (documentScrollIos) {
@@ -177,6 +186,23 @@ export default function App() {
       document.documentElement.classList.remove("doc-scroll-ios");
     };
   }, [documentScrollIos]);
+
+  useLayoutEffect(() => {
+    if (!documentScrollIos) return undefined;
+    const el = pinnedHeaderRef.current;
+    if (!el) return undefined;
+    function measure() {
+      setIosHeaderSpacerPx(el.getBoundingClientRect().height);
+    }
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    window.addEventListener("orientationchange", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("orientationchange", measure);
+    };
+  }, [documentScrollIos, savedOpen, savedRows.length, currentRow, onionIdx]);
 
   const scrollRowIntoViewBelowPinned = useCallback(
     (ri, behavior = "smooth") => {
@@ -607,10 +633,18 @@ export default function App() {
       >
       <div
         ref={pinnedHeaderRef}
-        className={documentScrollIos ? "app-doc-scroll-pinned" : undefined}
         style={{
           ...(documentScrollIos
-            ? {}
+            ? {
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 25,
+                paddingLeft: "env(safe-area-inset-left, 0px)",
+                paddingRight: "env(safe-area-inset-right, 0px)",
+                boxSizing: "border-box"
+              }
             : {
                 position: "sticky",
                 top: 0,
@@ -908,6 +942,18 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {documentScrollIos && (
+        <div
+          aria-hidden
+          style={{
+            width: "100%",
+            height: iosHeaderSpacerPx,
+            flexShrink: 0,
+            pointerEvents: "none"
+          }}
+        />
+      )}
 
       {savedOpen && (
         <div style={{ flexShrink: 0, maxHeight: 180, overflowY: "auto", padding: "0 12px 6px" }}>
