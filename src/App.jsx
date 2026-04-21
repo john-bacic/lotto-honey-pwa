@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } fr
 import * as THREE from "three";
 import { getDrawRows } from "./lib/draws";
 
-/** Base + honeycomb off-state (minus hex screenshot): outer #212226, face #323339, text #757575 */
+/** Base + honeycomb off-state: outer #212226, face #323339, text #757575 */
 const UI_BG = "#212226";
 const UI_CARD = "#323339";
 const UI_NUM_CELL_IDLE = "#323339";
@@ -13,9 +13,12 @@ const HONEY_HEX_STROKE_RGBA = "rgba(42,43,49,0.95)";
 const HONEY_HEX_LABEL = "#757575";
 const HEX_FILL = 0x323339;
 const HEX_RING = 0x2a2b31;
-/** Digit legibility on row chips — white on spectrum needs separation from fill */
-const ROW_NUM_TEXT_SHADOW_LIT = "0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.45)";
+/** Idle row/honeycomb labels */
 const ROW_NUM_TEXT_SHADOW_IDLE = "0 1px 1px rgba(0,0,0,0.5)";
+/** Lit row + honeycomb digits (not bonus): black, no shadow */
+const LIT_NUM_COLOR = "#000000";
+/** Bonus chip dashed border — lit digit matches this */
+const BONUS_DASH_RGBA = "rgba(255,255,255,0.2)";
 
 const ROW_COLORS = [
   "#ff78b4",
@@ -255,6 +258,9 @@ export default function App() {
   const [savedRowsHydrated, setSavedRowsHydrated] = useState(false);
   const [savedOpen, setSavedOpen] = useState(true);
   const [savedLocked, setSavedLocked] = useState(true);
+  const [honeycombVisible, setHoneycombVisible] = useState(true);
+  /** When honeycomb is hidden: clicking a ball # in rows toggles that # everywhere */
+  const [rowGlobalNums, setRowGlobalNums] = useState(() => new Set());
   const [onionIdx, setOnionIdx] = useState(0);
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
@@ -302,7 +308,7 @@ export default function App() {
       ro.disconnect();
       window.removeEventListener("orientationchange", measure);
     };
-  }, [documentScrollIos, savedOpen, savedRows.length, currentRow, onionIdx]);
+  }, [documentScrollIos, savedOpen, savedRows.length, currentRow, onionIdx, honeycombVisible]);
 
   const scrollRowIntoViewBelowPinned = useCallback(
     (ri, behavior = "smooth") => {
@@ -383,6 +389,40 @@ export default function App() {
 
   const numBrightness = useMemo(() => {
     const map = {};
+    if (!honeycombVisible) {
+      rowGlobalNums.forEach((n) => {
+        if (n >= 1 && n <= totalCells) map[n] = { brightness: 1 };
+      });
+      activeNums.forEach((n) => {
+        if (n <= totalCells) map[n] = { brightness: 1 };
+      });
+      activeRowList.forEach(({ ri, depth }) => {
+        let b;
+        if (depth === 0) b = 1;
+        else {
+          const skinCount = Math.max(onionCount - 1, 1);
+          b = skinCount <= 1 ? 0.75 : 0.75 - ((depth - 1) / (skinCount - 1)) * 0.65;
+        }
+        ROWS[ri].nums.forEach((n) => {
+          if (n >= 1 && n <= totalCells && (!map[n] || map[n].brightness < b)) {
+            map[n] = { brightness: b };
+          }
+        });
+        const bn = ROWS[ri].bonus;
+        if (bn >= 1 && bn <= totalCells && (!map[bn] || map[bn].brightness < b)) {
+          map[bn] = { brightness: b };
+        }
+      });
+      const savedSel = savedRows.find((row) => row.id === selectedSavedId);
+      if (savedSel) {
+        savedSel.nums.forEach((n) => {
+          if (n >= 1 && n <= totalCells && (!map[n] || map[n].brightness < 1)) {
+            map[n] = { brightness: 1 };
+          }
+        });
+      }
+      return map;
+    }
     activeNums.forEach((n) => {
       if (n <= totalCells) map[n] = { brightness: 1 };
     });
@@ -398,6 +438,10 @@ export default function App() {
           map[n] = { brightness: b };
         }
       });
+      const bn = ROWS[ri].bonus;
+      if (bn >= 1 && bn <= totalCells && (!map[bn] || map[bn].brightness < b)) {
+        map[bn] = { brightness: b };
+      }
     });
     const savedSel = savedRows.find((row) => row.id === selectedSavedId);
     if (savedSel) {
@@ -408,7 +452,16 @@ export default function App() {
       });
     }
     return map;
-  }, [activeNums, activeRowList, onionCount, totalCells, savedRows, selectedSavedId]);
+  }, [
+    honeycombVisible,
+    rowGlobalNums,
+    activeNums,
+    activeRowList,
+    onionCount,
+    totalCells,
+    savedRows,
+    selectedSavedId
+  ]);
 
   const anyActive = Object.keys(numBrightness).length > 0;
   const manualCount = activeNums.size;
@@ -457,6 +510,7 @@ export default function App() {
       return;
     }
     setActiveNums(new Set());
+    setRowGlobalNums(new Set());
   }
 
   function arrowNav(dir, allowLoop = false) {
@@ -502,6 +556,23 @@ export default function App() {
     setSelectedSavedId(null);
     setCurrentRow((prev) => (prev === ri ? -1 : ri));
   };
+
+  function toggleRowGlobalNum(e, n) {
+    if (honeycombVisible || n < 1 || n > totalCells) return;
+    e.stopPropagation();
+    setRowGlobalNums((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+  }
+
+  function hideHoneycomb() {
+    setHoneycombVisible(false);
+    setCurrentRow(-1);
+    setSelectedSavedId(null);
+  }
 
   const buildScene = useCallback((el, gRows, tc) => {
     if (sceneRef.current) {
@@ -644,6 +715,16 @@ export default function App() {
     };
   }, [buildScene, gridRows, totalCells]);
 
+  /** When the grid is shown again, sync drawing buffer size (canvas stays mounted; was off-screen). */
+  useLayoutEffect(() => {
+    if (!honeycombVisible || !sceneRef.current || !mountRef.current) return;
+    const st = sceneRef.current;
+    const w = mountRef.current.clientWidth || 360;
+    st.ren.setSize(w, CANVAS_H);
+    st.ren.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    st.ren.render(st.scene, st.cam);
+  }, [honeycombVisible]);
+
   useEffect(() => {
     if (!sceneRef.current) return;
     const { meshes, tc } = sceneRef.current;
@@ -671,7 +752,11 @@ export default function App() {
   const atTopBoundary = currentRow === 0;
   const atBottomBoundary = currentRow === ROWS.length - 1;
   const hasRowLikeSelection = currentRow >= 0 || selectedSavedId !== null;
-  const canTurnOff = currentRow >= 0 || selectedSavedId !== null || activeNums.size > 0;
+  const canTurnOff =
+    currentRow >= 0 ||
+    selectedSavedId !== null ||
+    activeNums.size > 0 ||
+    (!honeycombVisible && rowGlobalNums.size > 0);
   const hasManualClear = activeNums.size > 0;
   const topDraw = currentRow >= 0 ? ROWS[currentRow] : null;
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
@@ -762,7 +847,6 @@ export default function App() {
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "space-between",
             width: "100%",
             paddingLeft: 14,
             paddingRight: 14,
@@ -785,7 +869,8 @@ export default function App() {
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              flexShrink: 0
+              flexShrink: 0,
+              alignSelf: "center"
             }}
           >
             <svg
@@ -828,6 +913,50 @@ export default function App() {
 
           <div
             style={{
+              flex: 1,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minWidth: 0,
+              alignSelf: "stretch"
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => (honeycombVisible ? hideHoneycomb() : setHoneycombVisible(true))}
+              aria-label={honeycombVisible ? "Hide honeycomb" : "Show honeycomb"}
+              title={honeycombVisible ? "Hide honeycomb" : "Show honeycomb"}
+              style={{
+                width: 36,
+                height: 36,
+                padding: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.65)",
+                borderRadius: 999,
+                cursor: "pointer",
+                flexShrink: 0
+              }}
+            >
+              {honeycombVisible ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+          </div>
+
+          <div
+            style={{
               position: "relative",
               height: 32,
               borderRadius: 999,
@@ -842,7 +971,8 @@ export default function App() {
               fontWeight: 600,
               letterSpacing: 1,
               fontFamily: "'Outfit', -apple-system, sans-serif",
-              flexShrink: 0
+              flexShrink: 0,
+              alignSelf: "center"
             }}
           >
             <svg
@@ -895,23 +1025,35 @@ export default function App() {
             flexDirection: "column",
             alignItems: "center",
             paddingTop: 0,
-            marginTop: -18
+            marginTop: -12,
+            position: "relative",
+            width: "100%"
           }}
         >
-          <div style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center" }}>
+          <div
+            style={{
+              position: honeycombVisible ? "relative" : "absolute",
+              left: honeycombVisible ? "auto" : -10000,
+              top: 0,
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+              visibility: honeycombVisible ? "visible" : "hidden",
+              pointerEvents: honeycombVisible ? "auto" : "none"
+            }}
+            aria-hidden={!honeycombVisible}
+          >
             <div style={{ position: "relative", width: "100%", maxWidth: 480 }}>
               <div ref={mountRef} style={{ width: "100%", height: CANVAS_H }} />
               <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: CANVAS_H, pointerEvents: "auto" }}>
                 {labelPos.map(({ num: n, left, top }) => {
                   const info = numBrightness[n];
-                  const b = info ? info.brightness : 0;
                   const isOn = Boolean(info);
-                  const isManuallySelected = activeNums.has(n);
-                  const isBlocked = manualLimitReached && !isManuallySelected;
+                  const isBlocked = manualLimitReached && !activeNums.has(n);
                   const labelColor = isBlocked
                     ? "rgba(52,54,58,0.95)"
                     : isOn
-                      ? `rgba(255,255,255,${0.2 + b * 0.8})`
+                      ? LIT_NUM_COLOR
                       : HONEY_HEX_LABEL;
                   return (
                     <div
@@ -932,7 +1074,7 @@ export default function App() {
                         fontSize: 12,
                         fontWeight: 700,
                         color: labelColor,
-                        textShadow: isOn ? ROW_NUM_TEXT_SHADOW_LIT : isBlocked ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
+                        textShadow: isBlocked || isOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
                         pointerEvents: "auto",
                         cursor: isBlocked ? "not-allowed" : "pointer"
                       }}
@@ -968,26 +1110,28 @@ export default function App() {
             }}
           >
             <div style={{ justifySelf: "start", minWidth: 0 }}>
-              <button
-                onClick={saveManualRow}
-                disabled={manualCount === 0}
-                style={{
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: manualCount > 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
-                  color: manualCount > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)",
-                  borderRadius: 999,
-                  height: 24,
-                  padding: "0 10px",
-                  fontSize: 10,
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                  cursor: manualCount > 0 ? "pointer" : "not-allowed",
-                  fontFamily: "Outfit,sans-serif",
-                  flexShrink: 0
-                }}
-              >
-                Save {manualCount}
-              </button>
+              {honeycombVisible && (
+                <button
+                  onClick={saveManualRow}
+                  disabled={manualCount === 0}
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: manualCount > 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
+                    color: manualCount > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)",
+                    borderRadius: 999,
+                    height: 24,
+                    padding: "0 10px",
+                    fontSize: 10,
+                    letterSpacing: 1,
+                    textTransform: "uppercase",
+                    cursor: manualCount > 0 ? "pointer" : "not-allowed",
+                    fontFamily: "Outfit,sans-serif",
+                    flexShrink: 0
+                  }}
+                >
+                  Save {manualCount}
+                </button>
+              )}
             </div>
             <div
               style={{
@@ -1132,9 +1276,9 @@ export default function App() {
                               justifyContent: "center",
                               fontSize: 14,
                               fontWeight: 600,
-                              color: isOn ? "rgba(255,255,255,0.95)" : HONEY_HEX_LABEL,
+                              color: isOn ? LIT_NUM_COLOR : HONEY_HEX_LABEL,
                               background: isOn ? themeRgba(th, 0.82) : UI_NUM_CELL_IDLE,
-                              textShadow: isOn ? ROW_NUM_TEXT_SHADOW_LIT : ROW_NUM_TEXT_SHADOW_IDLE
+                              textShadow: isOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE
                             }}
                           >
                             {n}
@@ -1259,6 +1403,8 @@ export default function App() {
                     return (
                       <div
                         key={`${row.date}-${ci}`}
+                        role="presentation"
+                        onClick={(e) => toggleRowGlobalNum(e, n)}
                         style={{
                           width: 38,
                           height: 34,
@@ -1268,10 +1414,11 @@ export default function App() {
                           justifyContent: "center",
                           fontSize: 14,
                           fontWeight: 600,
-                          color: numOn ? `rgba(255,255,255,${0.3 + b * 0.7})` : HONEY_HEX_LABEL,
+                          color: numOn ? LIT_NUM_COLOR : HONEY_HEX_LABEL,
                           background: numOn ? themeRgba(th, 0.15 + b * 0.85) : UI_NUM_CELL_IDLE,
-                          textShadow: numOn ? ROW_NUM_TEXT_SHADOW_LIT : ROW_NUM_TEXT_SHADOW_IDLE,
-                          transition: "all 0.25s"
+                          textShadow: numOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
+                          transition: "all 0.25s",
+                          cursor: honeycombVisible ? "inherit" : "pointer"
                         }}
                       >
                         {n}
@@ -1280,12 +1427,10 @@ export default function App() {
                   })}
                   {(() => {
                     const bonusOn = row.bonus >= 1 && row.bonus <= totalCells && Boolean(numBrightness[row.bonus]);
-                    const bonusHex = spectrumHexForNum(row.bonus, totalCells);
-                    const bonusBrightness = numBrightness[row.bonus]?.brightness || 0;
-                    const textAlpha = bonusOn ? (0.3 + bonusBrightness * 0.7) * 0.5 : 0.35 * 0.5;
-                    const bgAlpha = (0.15 + bonusBrightness * 0.85) * 0.5;
                     return (
                       <div
+                        role="presentation"
+                        onClick={(e) => toggleRowGlobalNum(e, row.bonus)}
                         style={{
                           width: 38,
                           height: 34,
@@ -1295,11 +1440,12 @@ export default function App() {
                           justifyContent: "center",
                           fontSize: 14,
                           fontWeight: 600,
-                          color: `rgba(255,255,255,${textAlpha})`,
-                          background: bonusOn ? themeRgba(bonusHex, bgAlpha) : UI_NUM_CELL_IDLE,
-                          border: "1px dashed rgba(255,255,255,0.2)",
-                          textShadow: bonusOn ? ROW_NUM_TEXT_SHADOW_LIT : ROW_NUM_TEXT_SHADOW_IDLE,
-                          transition: "all 0.25s"
+                          color: bonusOn ? BONUS_DASH_RGBA : "rgba(255,255,255,0.175)",
+                          background: UI_NUM_CELL_IDLE,
+                          border: `1px dashed ${BONUS_DASH_RGBA}`,
+                          textShadow: "none",
+                          transition: "all 0.25s",
+                          cursor: honeycombVisible ? "inherit" : "pointer"
                         }}
                         title="Bonus number"
                       >
