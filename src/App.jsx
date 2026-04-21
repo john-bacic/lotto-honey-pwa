@@ -107,6 +107,51 @@ function formatDrawDateJackpot(dateStr, jackpot) {
   return `${day}.${month}.${year} ~ $${millions} million`;
 }
 
+const SAVED_ROWS_STORAGE_KEY = "lotto-honey-saved-rows-v1";
+
+function isValidSavedRow(r) {
+  return (
+    r &&
+    typeof r.id === "string" &&
+    Array.isArray(r.nums) &&
+    r.nums.length > 0 &&
+    r.nums.length <= 8 &&
+    r.nums.every((n) => typeof n === "number" && n >= 1 && n <= 52) &&
+    typeof r.savedNumber === "number" &&
+    r.savedNumber >= 1
+  );
+}
+
+function loadSavedRowsFromStorage() {
+  if (typeof window === "undefined") return { savedRows: [], nextSavedNumber: 1 };
+  try {
+    const raw = window.localStorage.getItem(SAVED_ROWS_STORAGE_KEY);
+    if (!raw) return { savedRows: [], nextSavedNumber: 1 };
+    const parsed = JSON.parse(raw);
+    const rows = Array.isArray(parsed.savedRows) ? parsed.savedRows.filter(isValidSavedRow) : [];
+    const minNext = rows.length > 0 ? Math.max(...rows.map((row) => row.savedNumber)) + 1 : 1;
+    let nextSavedNumber =
+      typeof parsed.nextSavedNumber === "number" && parsed.nextSavedNumber >= 1
+        ? parsed.nextSavedNumber
+        : minNext;
+    if (nextSavedNumber < minNext) nextSavedNumber = minNext;
+    return { savedRows: rows, nextSavedNumber };
+  } catch {
+    return { savedRows: [], nextSavedNumber: 1 };
+  }
+}
+
+function persistSavedRowsToStorage(savedRows, nextSavedNumber) {
+  try {
+    window.localStorage.setItem(
+      SAVED_ROWS_STORAGE_KEY,
+      JSON.stringify({ savedRows, nextSavedNumber })
+    );
+  } catch {
+    /* quota / private mode */
+  }
+}
+
 function getPositions(gridRows) {
   const maxCols = Math.max(...gridRows);
   const pos = [];
@@ -207,6 +252,7 @@ export default function App() {
   const [selectedSavedId, setSelectedSavedId] = useState(null);
   const [savedRows, setSavedRows] = useState([]);
   const [nextSavedNumber, setNextSavedNumber] = useState(1);
+  const [savedRowsHydrated, setSavedRowsHydrated] = useState(false);
   const [savedOpen, setSavedOpen] = useState(true);
   const [savedLocked, setSavedLocked] = useState(true);
   const [onionIdx, setOnionIdx] = useState(0);
@@ -228,6 +274,18 @@ export default function App() {
       document.documentElement.classList.remove("doc-scroll-ios");
     };
   }, [documentScrollIos]);
+
+  useEffect(() => {
+    const { savedRows: loaded, nextSavedNumber: next } = loadSavedRowsFromStorage();
+    setSavedRows(loaded);
+    setNextSavedNumber(next);
+    setSavedRowsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!savedRowsHydrated) return;
+    persistSavedRowsToStorage(savedRows, nextSavedNumber);
+  }, [savedRows, nextSavedNumber, savedRowsHydrated]);
 
   useLayoutEffect(() => {
     if (!documentScrollIos) return undefined;
