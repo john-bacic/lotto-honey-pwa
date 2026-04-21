@@ -408,10 +408,6 @@ export default function App() {
             map[n] = { brightness: b };
           }
         });
-        const bn = ROWS[ri].bonus;
-        if (bn >= 1 && bn <= totalCells && (!map[bn] || map[bn].brightness < b)) {
-          map[bn] = { brightness: b };
-        }
       });
       const savedSel = savedRows.find((row) => row.id === selectedSavedId);
       if (savedSel) {
@@ -438,10 +434,6 @@ export default function App() {
           map[n] = { brightness: b };
         }
       });
-      const bn = ROWS[ri].bonus;
-      if (bn >= 1 && bn <= totalCells && (!map[bn] || map[bn].brightness < b)) {
-        map[bn] = { brightness: b };
-      }
     });
     const savedSel = savedRows.find((row) => row.id === selectedSavedId);
     if (savedSel) {
