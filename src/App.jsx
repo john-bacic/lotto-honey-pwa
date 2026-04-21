@@ -1406,89 +1406,91 @@ export default function App() {
                     </svg>
                     <HexToolbarChevron pointUp={savedOpen} />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setSavedLocked((prev) => !prev)}
-                    style={{
-                      position: "relative",
-                      width: 44,
-                      height: 44,
-                      padding: 0,
-                      border: "none",
-                      background: "transparent",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      flexShrink: 0
-                    }}
-                    title={savedLocked ? "Unlock all saved rows" : "Lock all saved rows"}
-                  >
-                    {savedLocked ? (
-                      <>
-                        <svg
-                          width="44"
-                          height="44"
-                          viewBox="0 0 100 100"
-                          style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                          aria-hidden="true"
-                        >
-                          <polygon
-                            points="50,2 93,25 93,75 50,98 7,75 7,25"
-                            fill={HONEY_HEX_FACE_RGBA}
-                            stroke="none"
-                          />
-                        </svg>
-                        <span
-                          style={{
-                            position: "relative",
-                            zIndex: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center"
-                          }}
-                        >
-                          <LockIcon locked color={HONEY_HEX_LABEL} />
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <svg
-                          width="44"
-                          height="44"
-                          viewBox="0 0 100 100"
-                          style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                          aria-hidden="true"
-                        >
-                          <polygon
-                            points="50,2 93,25 93,75 50,98 7,75 7,25"
-                            fill="rgba(255,255,255,0.05)"
-                            stroke={HONEY_HEX_STROKE_RGBA}
-                            strokeWidth="4"
-                          />
-                        </svg>
-                        <span
-                          style={{
-                            position: "relative",
-                            zIndex: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontFamily: "'Outfit', system-ui, sans-serif",
-                            fontSize: 20,
-                            fontWeight: 500,
-                            lineHeight: 1,
-                            color: HONEY_HEX_LABEL,
-                            pointerEvents: "none",
-                            userSelect: "none"
-                          }}
-                          aria-hidden="true"
-                        >
-                          ※
-                        </span>
-                      </>
-                    )}
-                  </button>
+                  {savedOpen && (
+                    <button
+                      type="button"
+                      onClick={() => setSavedLocked((prev) => !prev)}
+                      style={{
+                        position: "relative",
+                        width: 44,
+                        height: 44,
+                        padding: 0,
+                        border: "none",
+                        background: "transparent",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0
+                      }}
+                      title={savedLocked ? "Unlock all saved rows" : "Lock all saved rows"}
+                    >
+                      {savedLocked ? (
+                        <>
+                          <svg
+                            width="44"
+                            height="44"
+                            viewBox="0 0 100 100"
+                            style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                            aria-hidden="true"
+                          >
+                            <polygon
+                              points="50,2 93,25 93,75 50,98 7,75 7,25"
+                              fill={HONEY_HEX_FACE_RGBA}
+                              stroke="none"
+                            />
+                          </svg>
+                          <span
+                            style={{
+                              position: "relative",
+                              zIndex: 1,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center"
+                            }}
+                          >
+                            <LockIcon locked color={HONEY_HEX_LABEL} />
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            width="44"
+                            height="44"
+                            viewBox="0 0 100 100"
+                            style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                            aria-hidden="true"
+                          >
+                            <polygon
+                              points="50,2 93,25 93,75 50,98 7,75 7,25"
+                              fill="rgba(255,255,255,0.05)"
+                              stroke={HONEY_HEX_STROKE_RGBA}
+                              strokeWidth="4"
+                            />
+                          </svg>
+                          <span
+                            style={{
+                              position: "relative",
+                              zIndex: 1,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontFamily: "'Outfit', system-ui, sans-serif",
+                              fontSize: 20,
+                              fontWeight: 500,
+                              lineHeight: 1,
+                              color: HONEY_HEX_LABEL,
+                              pointerEvents: "none",
+                              userSelect: "none"
+                            }}
+                            aria-hidden="true"
+                          >
+                            ※
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </>
               )}
             </div>
