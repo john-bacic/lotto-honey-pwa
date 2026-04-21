@@ -32,6 +32,47 @@ body {
   box-sizing: border-box;
 }
 
+/* Save button: outline heart → filled + pop on successful save */
+.save-heart-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.save-heart-wrap--burst {
+  animation: save-heart-burst 0.7s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+}
+
+@keyframes save-heart-burst {
+  0% {
+    transform: scale(1);
+  }
+  28% {
+    transform: scale(1.28);
+  }
+  55% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.save-heart-svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: fill 0.35s ease;
+}
+
+.save-heart-svg--filled path {
+  fill: currentColor;
+}
+
 /*
  * iOS WebKit: single scroll root on <html>; window scroll + fixed header in App.
  * Toggled from App via classList on <html>.

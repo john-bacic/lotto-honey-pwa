@@ -258,6 +258,10 @@ export default function App() {
   const [savedRowsHydrated, setSavedRowsHydrated] = useState(false);
   const [savedOpen, setSavedOpen] = useState(true);
   const [savedLocked, setSavedLocked] = useState(true);
+  /** Brief filled heart + CSS burst after a row is actually saved */
+  const [saveHeartFilled, setSaveHeartFilled] = useState(false);
+  const [saveHeartBurstKey, setSaveHeartBurstKey] = useState(0);
+  const saveHeartClearRef = useRef(null);
   const [honeycombVisible, setHoneycombVisible] = useState(true);
   /** When honeycomb is hidden: clicking a ball # in rows toggles that # everywhere */
   const [rowGlobalNums, setRowGlobalNums] = useState(() => new Set());
@@ -280,6 +284,12 @@ export default function App() {
       document.documentElement.classList.remove("doc-scroll-ios");
     };
   }, [documentScrollIos]);
+
+  useEffect(() => {
+    return () => {
+      if (saveHeartClearRef.current) clearTimeout(saveHeartClearRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const { savedRows: loaded, nextSavedNumber: next } = loadSavedRowsFromStorage();
@@ -483,6 +493,13 @@ export default function App() {
     setSelectedSavedId(id);
     setCurrentRow(-1);
     setSavedOpen(true);
+    if (saveHeartClearRef.current) clearTimeout(saveHeartClearRef.current);
+    setSaveHeartBurstKey((k) => k + 1);
+    setSaveHeartFilled(true);
+    saveHeartClearRef.current = setTimeout(() => {
+      setSaveHeartFilled(false);
+      saveHeartClearRef.current = null;
+    }, 950);
   }
 
   function deleteSavedRow(id) {
@@ -1104,24 +1121,49 @@ export default function App() {
             <div style={{ justifySelf: "start", minWidth: 0 }}>
               {honeycombVisible && (
                 <button
+                  type="button"
                   onClick={saveManualRow}
                   disabled={manualCount === 0}
+                  aria-label={
+                    manualCount > 0
+                      ? `Save ${manualCount} numbers to saved rows`
+                      : "Save (pick up to 7 numbers on the honeycomb first)"
+                  }
+                  title={
+                    manualCount > 0
+                      ? `Save ${manualCount} number${manualCount === 1 ? "" : "s"}`
+                      : "Select numbers on the honeycomb to save"
+                  }
                   style={{
                     border: "1px solid rgba(255,255,255,0.15)",
                     background: manualCount > 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
                     color: manualCount > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)",
                     borderRadius: 999,
+                    width: 28,
                     height: 24,
-                    padding: "0 10px",
-                    fontSize: 10,
-                    letterSpacing: 1,
-                    textTransform: "uppercase",
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     cursor: manualCount > 0 ? "pointer" : "not-allowed",
-                    fontFamily: "Outfit,sans-serif",
                     flexShrink: 0
                   }}
                 >
-                  Save {manualCount}
+                  <span
+                    key={saveHeartBurstKey}
+                    className={`save-heart-wrap${saveHeartFilled ? " save-heart-wrap--burst" : ""}`}
+                    aria-hidden="true"
+                  >
+                    <svg
+                      className={`save-heart-svg${saveHeartFilled ? " save-heart-svg--filled" : ""}`}
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  </span>
                 </button>
               )}
             </div>
@@ -1154,22 +1196,41 @@ export default function App() {
               {savedRows.length > 0 && (
                 <>
                   <button
+                    type="button"
                     onClick={() => setSavedOpen((prev) => !prev)}
+                    aria-label={
+                      savedOpen
+                        ? `Collapse saved numbers (${savedRows.length})`
+                        : `Expand saved numbers (${savedRows.length})`
+                    }
+                    title={
+                      savedOpen
+                        ? `Hide saved rows (${savedRows.length})`
+                        : `Show saved rows (${savedRows.length})`
+                    }
                     style={{
                       border: "1px solid rgba(255,255,255,0.15)",
                       background: "rgba(255,255,255,0.04)",
                       color: "rgba(255,255,255,0.6)",
                       borderRadius: 999,
+                      width: 28,
                       height: 24,
-                      padding: "0 10px",
-                      fontSize: 10,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                      fontFamily: "Outfit,sans-serif"
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer"
                     }}
                   >
-                    {savedOpen ? "Hide" : "Show"} ({savedRows.length})
+                    {savedOpen ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="18 15 12 9 6 15" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    )}
                   </button>
                   <button
                     onClick={() => setSavedLocked((prev) => !prev)}
@@ -1208,7 +1269,7 @@ export default function App() {
       )}
 
       {savedOpen && (
-        <div style={{ flexShrink: 0, maxHeight: 180, overflowY: "auto", padding: "0 12px 6px" }}>
+        <div style={{ flexShrink: 0, maxHeight: 180, overflowY: "auto", padding: "0 0 6px" }}>
           {savedRows.length > 0 &&
             savedRows.map((row, ri) => {
               const color = ROW_COLORS[ri % ROW_COLORS.length];
@@ -1238,13 +1299,12 @@ export default function App() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: isCurrent ? "#fff" : "rgba(255,255,255,0.6)",
                         background: isCurrent ? color : "rgba(255,255,255,0.08)"
                       }}
                     >
-                      {row.savedNumber}
+                      <span style={{ color: "#000000", opacity: 0.5, fontSize: 11, fontWeight: 700, lineHeight: 1 }}>
+                        {row.savedNumber}
+                      </span>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 4, flex: 1, justifyContent: "center" }}>
@@ -1327,7 +1387,7 @@ export default function App() {
       <div
         ref={rowsRef}
         style={{
-          padding: `4px 12px ${rowsScrollBottomPad}`
+          padding: `4px 0 ${rowsScrollBottomPad}`
         }}
       >
         {ROWS.map((row, ri) => {
@@ -1378,13 +1438,12 @@ export default function App() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 10,
-                    fontWeight: 600,
-                    color: isOnion ? "#fff" : "rgba(255,255,255,0.4)",
                     background: isOnion ? color : "rgba(255,255,255,0.05)"
                   }}
                 >
-                  {ri + 1}
+                  <span style={{ color: "#000000", opacity: 0.5, fontSize: 10, fontWeight: 600, lineHeight: 1 }}>
+                    {ri + 1}
+                  </span>
                 </div>
               </div>
               <div style={{ display: "flex", gap: 4, flex: 1, justifyContent: "center" }}>
@@ -1494,13 +1553,12 @@ export default function App() {
                         background: ROW_COLORS[currentRow % ROW_COLORS.length],
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: "#fff"
+                        justifyContent: "center"
                       }}
                     >
-                      {currentRow + 1}
+                      <span style={{ color: "#000000", opacity: 0.5, fontSize: 10, fontWeight: 700, lineHeight: 1 }}>
+                        {currentRow + 1}
+                      </span>
                     </div>
                     <span style={{ fontSize: 12, fontWeight: 400, color: HONEY_HEX_LABEL }}>/ {ROWS.length}</span>
                   </>
