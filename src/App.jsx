@@ -1527,7 +1527,7 @@ export default function App() {
               <span>Saved</span>
             </div>
           )}
-          <div style={{ flexShrink: 0, maxHeight: 180, overflowY: "auto", padding: "0 0 6px" }}>
+          <div style={{ flexShrink: 0, padding: "0 0 6px" }}>
           {savedRows.length > 0 &&
             savedRows.map((row, ri) => {
               const color = ROW_COLORS[ri % ROW_COLORS.length];
