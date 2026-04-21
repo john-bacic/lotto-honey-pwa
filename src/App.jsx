@@ -20,6 +20,13 @@ const LIT_NUM_COLOR = "#000000";
 /** Bonus chip dashed border — lit digit matches this */
 const BONUS_DASH_RGBA = "rgba(255,255,255,0.2)";
 
+/** Down chevron (svgrepo.com); rotate 180° for “up” inside hex toolbar */
+const HEX_CHEVRON_DOWN_PATH =
+  "M4.29289 8.29289C4.68342 7.90237 5.31658 7.90237 5.70711 8.29289L12 14.5858L18.2929 8.29289C18.6834 7.90237 19.3166 7.90237 19.7071 8.29289C20.0976 8.68342 20.0976 9.31658 19.7071 9.70711L12.7071 16.7071C12.3166 17.0976 11.6834 17.0976 11.2929 16.7071L4.29289 9.70711C3.90237 9.31658 3.90237 8.68342 4.29289 8.29289Z";
+
+const ONION_SKIN_PATH =
+  "M6.05054 16.8866C5.19701 16.8298 4.24186 16.682 3.36182 16.355C1.57564 15.6914 0.0777085 14.3615 0.00365059 11.8022C-0.0804477 8.90157 1.29842 7.42132 3.11159 5.87477C4.59055 4.61345 6.39898 3.29143 7.56162 0.612889C7.66518 0.374773 7.8559 0.185533 8.09592 0.0829291C8.15672 0.0568951 8.21996 0.0367023 8.28498 0.0228592C8.42668 -0.00761974 8.57312 -0.00761974 8.71507 0.0228592C8.77997 0.0367017 8.8432 0.0568944 8.904 0.0829291C9.14414 0.18554 9.33485 0.374766 9.43804 0.612889C10.6009 3.29149 12.409 4.61335 13.8881 5.87477C15.7015 7.42145 17.0802 8.9016 16.9964 11.8022C16.922 14.3615 15.4242 15.6914 13.6379 16.355C12.7724 16.6767 11.834 16.825 10.9914 16.8839L11.3375 17.1933C11.7563 17.5679 11.79 18.2094 11.4124 18.6249C11.0348 19.0403 10.3885 19.0737 9.9694 18.6991L8.52258 17.4052L7.03031 18.7395C6.61162 19.1141 5.96506 19.0807 5.58746 18.6653C5.21009 18.2495 5.24365 17.6083 5.66247 17.2337L6.05054 16.8866ZM4.65671 7.23119C4.58503 7.29177 4.51425 7.35184 4.44359 7.41216C3.10235 8.55589 1.98388 9.59852 2.04621 11.7442C2.09229 13.3412 3.08574 14.1177 4.21945 14.5061C3.94117 13.8199 3.7576 12.9339 3.74086 11.7877C3.71052 9.69007 4.09352 8.38313 4.65672 7.23127L4.65671 7.23119ZM12.7801 14.5062C13.9139 14.1177 14.9074 13.3412 14.9538 11.7443C15.0157 9.59867 13.8972 8.55604 12.556 7.41218C12.4857 7.35186 12.4146 7.29179 12.343 7.23121C12.9062 8.38307 13.2892 9.68998 13.2587 11.7876C13.2424 12.9339 13.0584 13.8198 12.7801 14.5061V14.5062ZM8.49986 4.4021C8.01563 5.5194 7.49208 6.35083 7.02182 7.15333C6.31371 8.36104 5.75074 9.49346 5.78364 11.7588C5.80668 13.3367 6.17149 14.1857 6.72231 14.5949C6.96104 14.7723 7.21948 14.8542 7.45322 14.8868C7.99774 14.8642 8.35053 14.8125 8.35053 14.8125C8.44961 14.7981 8.54983 14.7981 8.64891 14.8125C8.64891 14.8125 9.00183 14.8642 9.54635 14.8868C9.77996 14.8542 10.0386 14.7723 10.2773 14.5949C10.8279 14.1857 11.193 13.3367 11.2158 11.7588C11.2487 9.49359 10.6857 8.36111 9.97789 7.15333C9.50736 6.35083 8.98394 5.5194 8.49994 4.4021H8.49986Z";
+
 const ROW_COLORS = [
   "#ff78b4",
   "#00ff8c",
@@ -132,12 +139,12 @@ function loadSavedRowsFromStorage() {
     if (!raw) return { savedRows: [], nextSavedNumber: 1 };
     const parsed = JSON.parse(raw);
     const rows = Array.isArray(parsed.savedRows) ? parsed.savedRows.filter(isValidSavedRow) : [];
-    const minNext = rows.length > 0 ? Math.max(...rows.map((row) => row.savedNumber)) + 1 : 1;
+    const maxSaved = rows.reduce((m, row) => Math.max(m, row.savedNumber), 0);
+    const minNextFromRows = maxSaved + 1;
+    const stored = Number(parsed.nextSavedNumber);
     let nextSavedNumber =
-      typeof parsed.nextSavedNumber === "number" && parsed.nextSavedNumber >= 1
-        ? parsed.nextSavedNumber
-        : minNext;
-    if (nextSavedNumber < minNext) nextSavedNumber = minNext;
+      Number.isFinite(stored) && stored >= 1 ? Math.trunc(stored) : minNextFromRows;
+    if (nextSavedNumber < minNextFromRows) nextSavedNumber = minNextFromRows;
     return { savedRows: rows, nextSavedNumber };
   } catch {
     return { savedRows: [], nextSavedNumber: 1 };
@@ -240,12 +247,78 @@ function NavButton({ dir, arrowColor, onNav, dimmed = false }) {
   );
 }
 
-function LockIcon({ locked, color = "rgba(255,255,255,0.65)" }) {
+function LockIcon({ locked, color = "rgba(255,255,255,0.65)", size = 13 }) {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {locked ? <rect x="5" y="11" width="14" height="10" rx="2" /> : <rect x="5" y="11" width="14" height="10" rx="2" />}
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="5" y="11" width="14" height="10" rx="2" />
       {locked ? <path d="M8 11V8a4 4 0 018 0v3" /> : <path d="M8 11V8a4 4 0 018 0" />}
     </svg>
+  );
+}
+
+function HexToolbarChevron({ pointUp }) {
+  return (
+    <span
+      style={{
+        position: "relative",
+        zIndex: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 44,
+        height: 44,
+        pointerEvents: "none",
+        userSelect: "none"
+      }}
+      aria-hidden="true"
+    >
+      <svg
+        width={13}
+        height={13}
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{
+          transform: pointUp ? "rotate(180deg)" : "none",
+          transformOrigin: "50% 50%"
+        }}
+      >
+        <path fillRule="evenodd" clipRule="evenodd" d={HEX_CHEVRON_DOWN_PATH} fill={HONEY_HEX_LABEL} />
+      </svg>
+    </span>
+  );
+}
+
+function OnionGlyphIcon({ off = false }) {
+  return (
+    <span
+      style={{
+        position: "relative",
+        zIndex: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 44,
+        height: 44,
+        pointerEvents: "none",
+        userSelect: "none",
+        color: off ? HONEY_HEX_LABEL : "rgba(255,255,255,0.55)"
+      }}
+      aria-hidden="true"
+    >
+      <svg width="17" height="19" viewBox="0 0 17 19" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path fillRule="evenodd" clipRule="evenodd" d={ONION_SKIN_PATH} fill="currentColor" />
+      </svg>
+    </span>
   );
 }
 
@@ -302,6 +375,13 @@ export default function App() {
     if (!savedRowsHydrated) return;
     persistSavedRowsToStorage(savedRows, nextSavedNumber);
   }, [savedRows, nextSavedNumber, savedRowsHydrated]);
+
+  /** Never let the issue counter sit below max(savedNumber)+1 (e.g. after deletes or bad storage). */
+  useEffect(() => {
+    if (!savedRowsHydrated) return;
+    const floor = savedRows.reduce((m, r) => Math.max(m, r.savedNumber), 0) + 1;
+    setNextSavedNumber((prev) => (prev < floor ? floor : prev));
+  }, [savedRows, savedRowsHydrated]);
 
   useLayoutEffect(() => {
     if (!documentScrollIos) return undefined;
@@ -522,19 +602,39 @@ export default function App() {
     setRowGlobalNums(new Set());
   }
 
-  function arrowNav(dir, allowLoop = false) {
-    setSelectedSavedId(null);
-    setCurrentRow((prev) => {
-      let next;
-      if (prev === -1) next = dir === 1 ? 0 : ROWS.length - 1;
-      else {
-        next = prev + dir;
-        if (next < 0) next = allowLoop ? ROWS.length - 1 : 0;
-        if (next >= ROWS.length) next = allowLoop ? 0 : ROWS.length - 1;
+  const arrowNav = useCallback(
+    (dir, allowLoop = false) => {
+      if (selectedSavedId != null && savedRows.length > 0) {
+        const idx = savedRows.findIndex((r) => r.id === selectedSavedId);
+        if (idx !== -1) {
+          let nextIdx = idx + dir;
+          if (!allowLoop) {
+            nextIdx = Math.max(0, Math.min(savedRows.length - 1, nextIdx));
+          } else if (nextIdx < 0) {
+            nextIdx = savedRows.length - 1;
+          } else if (nextIdx >= savedRows.length) {
+            nextIdx = 0;
+          }
+          if (nextIdx !== idx) {
+            setSelectedSavedId(savedRows[nextIdx].id);
+          }
+          return;
+        }
       }
-      return next;
-    });
-  }
+      setSelectedSavedId(null);
+      setCurrentRow((prev) => {
+        let next;
+        if (prev === -1) next = dir === 1 ? 0 : ROWS.length - 1;
+        else {
+          next = prev + dir;
+          if (next < 0) next = allowLoop ? ROWS.length - 1 : 0;
+          if (next >= ROWS.length) next = allowLoop ? 0 : ROWS.length - 1;
+        }
+        return next;
+      });
+    },
+    [selectedSavedId, savedRows]
+  );
 
   useEffect(() => {
     if (currentRow < 0) return;
@@ -559,7 +659,7 @@ export default function App() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [arrowNav]);
 
   const tapRow = (ri) => {
     setSelectedSavedId(null);
@@ -757,9 +857,23 @@ export default function App() {
     }
   }, [numBrightness, totalCells, activeNums]);
 
-  const arrowColor = currentRow >= 0 ? ROW_COLORS[currentRow % ROW_COLORS.length] : HONEY_HEX_LABEL;
-  const atTopBoundary = currentRow === 0;
-  const atBottomBoundary = currentRow === ROWS.length - 1;
+  const savedSelectedIndex = useMemo(() => {
+    if (!selectedSavedId) return -1;
+    return savedRows.findIndex((r) => r.id === selectedSavedId);
+  }, [selectedSavedId, savedRows]);
+
+  const arrowColor =
+    savedSelectedIndex >= 0
+      ? ROW_COLORS[savedSelectedIndex % ROW_COLORS.length]
+      : currentRow >= 0
+        ? ROW_COLORS[currentRow % ROW_COLORS.length]
+        : HONEY_HEX_LABEL;
+  const atTopBoundary =
+    savedSelectedIndex >= 0 ? savedSelectedIndex === 0 : currentRow === 0;
+  const atBottomBoundary =
+    savedSelectedIndex >= 0
+      ? savedSelectedIndex >= savedRows.length - 1
+      : currentRow === ROWS.length - 1;
   const hasRowLikeSelection = currentRow >= 0 || selectedSavedId !== null;
   const canTurnOff =
     currentRow >= 0 ||
@@ -929,97 +1043,130 @@ export default function App() {
               aria-label={honeycombVisible ? "Hide honeycomb" : "Show honeycomb"}
               title={honeycombVisible ? "Hide honeycomb" : "Show honeycomb"}
               style={{
-                width: 36,
-                height: 36,
+                position: "relative",
+                width: 44,
+                height: 44,
                 padding: 0,
+                border: "none",
+                background: "transparent",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.65)",
-                borderRadius: 999,
                 cursor: "pointer",
                 flexShrink: 0
               }}
             >
-              {honeycombVisible ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
+              <svg
+                width="44"
+                height="44"
+                viewBox="0 0 100 100"
+                style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                aria-hidden="true"
+              >
+                <polygon
+                  points="50,2 93,25 93,75 50,98 7,75 7,25"
+                  fill={honeycombVisible ? HONEY_HEX_FACE_RGBA : "rgba(255,255,255,0.05)"}
+                  stroke={HONEY_HEX_STROKE_RGBA}
+                  strokeWidth="4"
+                />
+              </svg>
+              <HexToolbarChevron pointUp={honeycombVisible} />
             </button>
           </div>
 
-          <div
-            style={{
-              justifySelf: "end",
-              position: "relative",
-              height: 32,
-              borderRadius: 999,
-              padding: "0 10px",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: onionCount > 0 ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
-              border: `1px solid ${onionCount > 0 ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)"}`,
-              color: onionCount > 0 ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)",
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: 1,
-              fontFamily: "'Outfit', -apple-system, sans-serif",
-              flexShrink: 0,
-              alignSelf: "center"
-            }}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={onionCount > 0 ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)"}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2C6.5 6 4 9.5 4 13a8 8 0 0016 0c0-3.5-2.5-7-8-11z" />
-              <path d="M12 6c-3.5 2.5-5 5-5 8a5 5 0 0010 0c0-3-1.5-5.5-5-8z" opacity="0.5" />
-            </svg>
-            {onionCount > 0 && <span>{onionCount}</span>}
-            {onionCount > 0 && (
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.65 }}>
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            )}
-            <select
-              aria-label="Onion skin level"
-              value={onionIdx}
-              onChange={(e) => setOnionIdx(Number(e.target.value))}
+          {honeycombVisible && (
+            <div
               style={{
-                position: "absolute",
-                inset: 0,
-                opacity: 0,
-                width: "100%",
-                height: "100%",
-                border: "none",
-                cursor: "pointer",
-                outline: "none"
+                justifySelf: "end",
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                gap: 0,
+                flexShrink: 0,
+                alignSelf: "center",
+                minHeight: 44
               }}
             >
-              <option value={0}>off</option>
-              {ONION_LEVELS.map((level, idx) => (
-                <option key={level} value={idx + 1}>
-                  {level}
-                </option>
-              ))}
-            </select>
-          </div>
+              {onionCount > 0 ? (
+                <>
+                  <OnionGlyphIcon />
+                  <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0, marginLeft: -5 }}>
+                    <svg
+                      width="44"
+                      height="44"
+                      viewBox="0 0 100 100"
+                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                      aria-hidden="true"
+                    >
+                      <polygon
+                        points="50,2 93,25 93,75 50,98 7,75 7,25"
+                        fill={HONEY_HEX_FACE_RGBA}
+                        stroke="rgba(255,80,128,0.55)"
+                        strokeWidth="4"
+                      />
+                    </svg>
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: "50%",
+                        top: "50%",
+                        transform: "translate(-50%, -50%)",
+                        zIndex: 1,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        fontFamily: "'Outfit', -apple-system, sans-serif",
+                        color: "rgba(255,255,255,0.92)",
+                        pointerEvents: "none",
+                        lineHeight: 1
+                      }}
+                    >
+                      {onionCount}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+                  <svg
+                    width="44"
+                    height="44"
+                    viewBox="0 0 100 100"
+                    style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                    aria-hidden="true"
+                  >
+                    <polygon
+                      points="50,2 93,25 93,75 50,98 7,75 7,25"
+                      fill="rgba(255,255,255,0.05)"
+                      stroke={HONEY_HEX_STROKE_RGBA}
+                      strokeWidth="4"
+                    />
+                  </svg>
+                  <OnionGlyphIcon off />
+                </div>
+              )}
+              <select
+                aria-label="Onion skin level"
+                value={onionIdx}
+                onChange={(e) => setOnionIdx(Number(e.target.value))}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  opacity: 0,
+                  width: "100%",
+                  height: "100%",
+                  border: "none",
+                  cursor: "pointer",
+                  outline: "none"
+                }}
+              >
+                <option value={0}>off</option>
+                {ONION_LEVELS.map((level, idx) => (
+                  <option key={level} value={idx + 1}>
+                    {level}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div
@@ -1028,7 +1175,12 @@ export default function App() {
             flexDirection: "column",
             alignItems: "center",
             paddingTop: 0,
-            marginTop: -12,
+            paddingBottom: 0,
+            marginTop: honeycombVisible ? -12 : 0,
+            marginBottom: 0,
+            minHeight: 0,
+            height: honeycombVisible ? undefined : 0,
+            overflow: "visible",
             position: "relative",
             width: "100%"
           }}
@@ -1042,7 +1194,8 @@ export default function App() {
               display: "flex",
               justifyContent: "center",
               visibility: honeycombVisible ? "visible" : "hidden",
-              pointerEvents: honeycombVisible ? "auto" : "none"
+              pointerEvents: honeycombVisible ? "auto" : "none",
+              flexShrink: 0
             }}
             aria-hidden={!honeycombVisible}
           >
@@ -1093,7 +1246,7 @@ export default function App() {
 
         <div
           style={{
-            padding: "4px 14px 2px",
+            padding: honeycombVisible ? "4px 14px 2px" : "0 14px 2px",
             flexShrink: 0,
             fontSize: 10,
             fontWeight: 300,
@@ -1129,13 +1282,12 @@ export default function App() {
                       : "Select numbers on the honeycomb to save"
                   }
                   style={{
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    background: manualCount > 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
-                    color: manualCount > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)",
-                    borderRadius: 999,
-                    width: 28,
-                    height: 24,
+                    position: "relative",
+                    width: 44,
+                    height: 44,
                     padding: 0,
+                    border: "none",
+                    background: "transparent",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1143,15 +1295,37 @@ export default function App() {
                     flexShrink: 0
                   }}
                 >
+                  <svg
+                    width="44"
+                    height="44"
+                    viewBox="0 0 100 100"
+                    style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                    aria-hidden="true"
+                  >
+                    <polygon
+                      points="50,2 93,25 93,75 50,98 7,75 7,25"
+                      fill={manualCount > 0 ? HONEY_HEX_FACE_RGBA : "rgba(255,255,255,0.05)"}
+                      stroke={HONEY_HEX_STROKE_RGBA}
+                      strokeWidth="4"
+                    />
+                  </svg>
                   <span
                     key={saveHeartBurstKey}
                     className={`save-heart-wrap${saveHeartFilled ? " save-heart-wrap--burst" : ""}`}
+                    style={{
+                      position: "relative",
+                      zIndex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: manualCount > 0 ? "rgba(255,80,128,0.98)" : HONEY_HEX_LABEL
+                    }}
                     aria-hidden="true"
                   >
                     <svg
                       className={`save-heart-svg${saveHeartFilled ? " save-heart-svg--filled" : ""}`}
-                      width="14"
-                      height="14"
+                      width="16"
+                      height="16"
                       viewBox="0 0 24 24"
                       aria-hidden="true"
                     >
@@ -1182,12 +1356,12 @@ export default function App() {
                 justifySelf: "end",
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
+                gap: 6,
                 flexShrink: 0,
-                minHeight: 24
+                minHeight: 44
               }}
             >
-              {savedRows.length > 0 && (
+              {honeycombVisible && savedRows.length > 0 && (
                 <>
                   <button
                     type="button"
@@ -1203,45 +1377,117 @@ export default function App() {
                         : `Show saved rows (${savedRows.length})`
                     }
                     style={{
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      background: "rgba(255,255,255,0.04)",
-                      color: "rgba(255,255,255,0.6)",
-                      borderRadius: 999,
-                      width: 28,
-                      height: 24,
+                      position: "relative",
+                      width: 44,
+                      height: 44,
                       padding: 0,
+                      border: "none",
+                      background: "transparent",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      cursor: "pointer"
+                      cursor: "pointer",
+                      flexShrink: 0
                     }}
                   >
-                    {savedOpen ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <polyline points="18 15 12 9 6 15" />
-                      </svg>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                    )}
+                    <svg
+                      width="44"
+                      height="44"
+                      viewBox="0 0 100 100"
+                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                      aria-hidden="true"
+                    >
+                      <polygon
+                        points="50,2 93,25 93,75 50,98 7,75 7,25"
+                        fill={HONEY_HEX_FACE_RGBA}
+                        stroke={HONEY_HEX_STROKE_RGBA}
+                        strokeWidth="4"
+                      />
+                    </svg>
+                    <HexToolbarChevron pointUp={savedOpen} />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setSavedLocked((prev) => !prev)}
                     style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      background: savedLocked ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
+                      position: "relative",
+                      width: 44,
+                      height: 44,
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      cursor: "pointer"
+                      cursor: "pointer",
+                      flexShrink: 0
                     }}
                     title={savedLocked ? "Unlock all saved rows" : "Lock all saved rows"}
                   >
-                    <LockIcon locked={savedLocked} color={savedLocked ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.6)"} />
+                    {savedLocked ? (
+                      <>
+                        <svg
+                          width="44"
+                          height="44"
+                          viewBox="0 0 100 100"
+                          style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                          aria-hidden="true"
+                        >
+                          <polygon
+                            points="50,2 93,25 93,75 50,98 7,75 7,25"
+                            fill={HONEY_HEX_FACE_RGBA}
+                            stroke="none"
+                          />
+                        </svg>
+                        <span
+                          style={{
+                            position: "relative",
+                            zIndex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
+                          }}
+                        >
+                          <LockIcon locked color={HONEY_HEX_LABEL} />
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          width="44"
+                          height="44"
+                          viewBox="0 0 100 100"
+                          style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                          aria-hidden="true"
+                        >
+                          <polygon
+                            points="50,2 93,25 93,75 50,98 7,75 7,25"
+                            fill="rgba(255,255,255,0.05)"
+                            stroke={HONEY_HEX_STROKE_RGBA}
+                            strokeWidth="4"
+                          />
+                        </svg>
+                        <span
+                          style={{
+                            position: "relative",
+                            zIndex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontFamily: "'Outfit', system-ui, sans-serif",
+                            fontSize: 20,
+                            fontWeight: 500,
+                            lineHeight: 1,
+                            color: HONEY_HEX_LABEL,
+                            pointerEvents: "none",
+                            userSelect: "none"
+                          }}
+                          aria-hidden="true"
+                        >
+                          ※
+                        </span>
+                      </>
+                    )}
                   </button>
                 </>
               )}
@@ -1263,7 +1509,23 @@ export default function App() {
       )}
 
       {savedOpen && (
-        <div style={{ flexShrink: 0, maxHeight: 180, overflowY: "auto", padding: "0 0 6px" }}>
+        <>
+          {savedRows.length > 0 && (
+            <div
+              style={{
+                padding: "8px 14px 4px",
+                flexShrink: 0,
+                fontSize: 10,
+                fontWeight: 300,
+                letterSpacing: 3,
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.25)"
+              }}
+            >
+              <span>Saved</span>
+            </div>
+          )}
+          <div style={{ flexShrink: 0, maxHeight: 180, overflowY: "auto", padding: "0 0 6px" }}>
           {savedRows.length > 0 &&
             savedRows.map((row, ri) => {
               const color = ROW_COLORS[ri % ROW_COLORS.length];
@@ -1297,7 +1559,7 @@ export default function App() {
                       }}
                     >
                       <span style={{ color: "#000000", opacity: 0.5, fontSize: 11, fontWeight: 700, lineHeight: 1 }}>
-                        {row.savedNumber}
+                        {savedRows.length - ri}
                       </span>
                     </div>
                   </div>
@@ -1309,10 +1571,13 @@ export default function App() {
                           return <div key={`${row.id}-empty-${slotIdx}`} style={{ width: 38, height: 34, borderRadius: 5, opacity: 0 }} />;
                         }
                         const th = spectrumHexForNum(n, totalCells);
-                        const isOn = Boolean(numBrightness[n]);
+                        const numOn = n >= 1 && n <= totalCells && Boolean(numBrightness[n]);
+                        const b = numBrightness[n]?.brightness || 0;
                         return (
                           <div
                             key={`${row.id}-${n}-${slotIdx}`}
+                            role="presentation"
+                            onClick={(e) => toggleRowGlobalNum(e, n)}
                             style={{
                               width: 38,
                               height: 34,
@@ -1322,9 +1587,11 @@ export default function App() {
                               justifyContent: "center",
                               fontSize: 14,
                               fontWeight: 600,
-                              color: isOn ? LIT_NUM_COLOR : HONEY_HEX_LABEL,
-                              background: isOn ? themeRgba(th, 0.82) : UI_NUM_CELL_IDLE,
-                              textShadow: isOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE
+                              color: numOn ? LIT_NUM_COLOR : HONEY_HEX_LABEL,
+                              background: numOn ? themeRgba(th, 0.15 + b * 0.85) : UI_NUM_CELL_IDLE,
+                              textShadow: numOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
+                              transition: "all 0.25s",
+                              cursor: honeycombVisible ? "inherit" : "pointer"
                             }}
                           >
                             {n}
@@ -1361,7 +1628,8 @@ export default function App() {
                 </div>
               );
             })}
-        </div>
+          </div>
+        </>
       )}
 
       <div
@@ -1375,7 +1643,7 @@ export default function App() {
           color: "rgba(255,255,255,0.25)"
         }}
       >
-        <span>Rows</span>
+        <span>Winning numbers</span>
       </div>
 
       <div
@@ -1401,6 +1669,8 @@ export default function App() {
           const baseActiveCount = row.nums.filter((n) => n >= 1 && n <= totalCells && Boolean(numBrightness[n])).length;
           const bonusIsActive = row.bonus >= 1 && row.bonus <= totalCells && Boolean(numBrightness[row.bonus]);
           const activeCount = baseActiveCount + (bonusIsActive ? 1 : 0);
+          const d = String(row.day ?? "").toLowerCase();
+          const drawDayLetter = d === "t" ? "T" : d === "f" ? "F" : "?";
 
           return (
             <div
@@ -1499,8 +1769,19 @@ export default function App() {
                     );
                   })()}
               </div>
-              <div style={{ fontSize: 9, fontWeight: 500, color: activeCount > 0 ? "rgba(255,255,255,0.3)" : "transparent", flexShrink: 0, width: 24, textAlign: "right" }}>
-                {activeCount > 0 ? `${activeCount}/7` : "0/7"}
+              <div
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: "rgba(255,255,255,0.38)",
+                  flexShrink: 0,
+                  width: 24,
+                  textAlign: "right",
+                  paddingRight: 6
+                }}
+                title={d === "t" ? "Tuesday draw" : d === "f" ? "Friday draw" : undefined}
+              >
+                {drawDayLetter}
               </div>
             </div>
           );
@@ -1537,7 +1818,26 @@ export default function App() {
             >
               <NavButton dir={1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atBottomBoundary} />
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 60, justifyContent: "center" }}>
-                {currentRow >= 0 ? (
+                {savedSelectedIndex >= 0 ? (
+                  <>
+                    <div
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        background: ROW_COLORS[savedSelectedIndex % ROW_COLORS.length],
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
+                      }}
+                    >
+                      <span style={{ color: "#000000", opacity: 0.5, fontSize: 10, fontWeight: 700, lineHeight: 1 }}>
+                        {savedRows.length - savedSelectedIndex}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 400, color: HONEY_HEX_LABEL }}>/ {savedRows.length}</span>
+                  </>
+                ) : currentRow >= 0 ? (
                   <>
                     <div
                       style={{
