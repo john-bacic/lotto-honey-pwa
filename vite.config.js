@@ -12,8 +12,8 @@ export default defineConfig({
         name: "Lotto Honeycomb Picker",
         short_name: "LottoHoney",
         description: "PWA for visualizing Lotto Max draw history",
-        theme_color: "#0c0c14",
-        background_color: "#0c0c14",
+        theme_color: "#212226",
+        background_color: "#212226",
         display: "standalone",
         start_url: "/",
         icons: [

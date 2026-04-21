@@ -2,21 +2,36 @@ import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } fr
 import * as THREE from "three";
 import { getDrawRows } from "./lib/draws";
 
+/** Base + honeycomb off-state (minus hex screenshot): outer #212226, face #323339, text #757575 */
+const UI_BG = "#212226";
+const UI_CARD = "#323339";
+const UI_NUM_CELL_IDLE = "#323339";
+/** Bottom nav + pinned top (toolbar, honeycomb, save row) */
+const UI_NAV_BG = "rgba(45, 45, 50, 0.96)";
+const HONEY_HEX_FACE_RGBA = "rgba(50,51,57,0.98)";
+const HONEY_HEX_STROKE_RGBA = "rgba(42,43,49,0.95)";
+const HONEY_HEX_LABEL = "#757575";
+const HEX_FILL = 0x323339;
+const HEX_RING = 0x2a2b31;
+/** Digit legibility on row chips — white on spectrum needs separation from fill */
+const ROW_NUM_TEXT_SHADOW_LIT = "0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.45)";
+const ROW_NUM_TEXT_SHADOW_IDLE = "0 1px 1px rgba(0,0,0,0.5)";
+
 const ROW_COLORS = [
-  "#ef4444",
-  "#f59e0b",
-  "#22c55e",
-  "#3b82f6",
-  "#a855f7",
-  "#ec4899",
-  "#14b8a6",
-  "#f97316",
-  "#6366f1",
-  "#84cc16",
-  "#06b6d4",
-  "#e11d48",
-  "#fb923c",
-  "#a3e635"
+  "#ff78b4",
+  "#00ff8c",
+  "#00dcdc",
+  "#ffcc00",
+  "#ff5aa8",
+  "#00e070",
+  "#00b8c8",
+  "#e6b82e",
+  "#7a9fff",
+  "#ff9ec8",
+  "#40ffb8",
+  "#40e8e8",
+  "#ffd940",
+  "#5ae0ff"
 ];
 
 const GRID_50 = [4, 5, 6, 7, 6, 7, 6, 5, 4];
@@ -50,8 +65,35 @@ function isIosWebKitDocumentScroll() {
   return /AppleWebKit/i.test(ua);
 }
 
-function specHue(i, total) {
-  return (i / Math.max(total - 1, 1)) * 300;
+/** 0…1 position of lotto number `num` in 1…totalCells (for gradient). */
+function spectrumT(num, totalCells) {
+  const i = Math.max(0, Math.min(num - 1, totalCells - 1));
+  return totalCells <= 1 ? 0 : i / (totalCells - 1);
+}
+
+/** Full hue sweep so ball 1…N maps to a smooth spectrum across the active grid (50 or 52). */
+function spectrumHexForNum(num, totalCells) {
+  const c = new THREE.Color();
+  c.setHSL(spectrumT(num, totalCells), 0.82, 0.46);
+  return `#${c.getHexString()}`;
+}
+
+function themeRgba(hex, a) {
+  const x = hex.replace("#", "");
+  const r = parseInt(x.slice(0, 2), 16);
+  const g = parseInt(x.slice(2, 4), 16);
+  const b = parseInt(x.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function spectrumSpecColorsForNum(n, totalCells, THREE_) {
+  const t = spectrumT(n, totalCells);
+  const specColor = new THREE_.Color().setHSL(t, 0.82, 0.46);
+  const specBorder = specColor.clone();
+  const hsl = { h: 0, s: 0, l: 0 };
+  specBorder.getHSL(hsl);
+  specBorder.setHSL(hsl.h, Math.min(1, hsl.s * 1.1), Math.min(0.78, hsl.l + 0.12));
+  return { specColor, specBorder };
 }
 
 /** DD.MM.YY ~ $N million (day, month, 2-digit year) */
@@ -477,22 +519,22 @@ export default function App() {
     const pos = getPositions(gRows);
     const meshes = {};
     pos.forEach(({ num: n, x, y }) => {
-      const outMat = new THREE.MeshBasicMaterial({ color: 0x151520 });
+      const outMat = new THREE.MeshBasicMaterial({ color: HEX_RING });
       const outMesh = new THREE.Mesh(outGeo, outMat);
       outMesh.position.set(x, y, 0);
       scene.add(outMesh);
 
-      const mat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      const mat = new THREE.MeshBasicMaterial({ color: HEX_FILL });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x, y, 1);
       scene.add(mesh);
 
-      const innerMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0 });
+      const innerMat = new THREE.MeshBasicMaterial({ color: HEX_FILL, transparent: true, opacity: 0 });
       const innerMesh = new THREE.Mesh(innerRingGeo, innerMat);
       innerMesh.position.set(x, y, 1.5);
       scene.add(innerMesh);
 
-      const hue = specHue(n - 1, tc);
+      const { specColor, specBorder } = spectrumSpecColorsForNum(n, tc, THREE);
       meshes[n] = {
         mesh,
         mat,
@@ -500,8 +542,8 @@ export default function App() {
         innerMat,
         outMesh,
         outMat,
-        specColor: new THREE.Color(`hsl(${hue}, 72%, 40%)`),
-        specBorder: new THREE.Color(`hsl(${hue}, 60%, 52%)`),
+        specColor,
+        specBorder,
         tgt: 1,
         cur: 1
       };
@@ -547,8 +589,8 @@ export default function App() {
   useEffect(() => {
     if (!sceneRef.current) return;
     const { meshes, tc } = sceneRef.current;
-    const black = new THREE.Color(0x000000);
-    const darkBorder = new THREE.Color(0x151520);
+    const black = new THREE.Color(HEX_FILL);
+    const darkBorder = new THREE.Color(HEX_RING);
     for (let n = 1; n <= tc; n += 1) {
       const h = meshes[n];
       if (!h) continue;
@@ -559,15 +601,15 @@ export default function App() {
         h.outMat.color.copy(new THREE.Color().copy(darkBorder).lerp(h.specBorder, b));
         h.tgt = 0.95 + b * 0.1;
       } else {
-        h.mat.color.set(0x000000);
-        h.outMat.color.set(0x151520);
+        h.mat.color.set(HEX_FILL);
+        h.outMat.color.set(HEX_RING);
         h.tgt = 1;
       }
       h.innerMat.opacity = activeNums.has(n) ? 1 : 0;
     }
   }, [numBrightness, totalCells, activeNums]);
 
-  const arrowColor = currentRow >= 0 ? ROW_COLORS[currentRow % ROW_COLORS.length] : "rgba(255,255,255,0.35)";
+  const arrowColor = currentRow >= 0 ? ROW_COLORS[currentRow % ROW_COLORS.length] : HONEY_HEX_LABEL;
   const atTopBoundary = currentRow === 0;
   const atBottomBoundary = currentRow === ROWS.length - 1;
   const hasRowLikeSelection = currentRow >= 0 || selectedSavedId !== null;
@@ -601,7 +643,7 @@ export default function App() {
         boxSizing: "border-box",
         paddingLeft: "env(safe-area-inset-left, 0px)",
         paddingRight: "env(safe-area-inset-right, 0px)",
-        background: "#0c0c14",
+        background: UI_BG,
         fontFamily: "Outfit,sans-serif",
         color: "rgba(255,255,255,0.92)",
         userSelect: "none",
@@ -652,7 +694,7 @@ export default function App() {
                 flexShrink: 0
               }),
           width: "100%",
-          background: "rgba(12, 12, 20, 0.9)",
+          background: UI_NAV_BG,
           paddingTop: "env(safe-area-inset-top, 0px)",
           borderBottom: "1px solid rgba(255,255,255,0.06)"
         }}
@@ -697,11 +739,11 @@ export default function App() {
             >
               <polygon
                 points="50,2 93,25 93,75 50,98 7,75 7,25"
-                fill={canTurnOff ? "rgba(18,20,30,0.98)" : "rgba(255,255,255,0.05)"}
+                fill={canTurnOff ? HONEY_HEX_FACE_RGBA : "rgba(255,255,255,0.05)"}
                 stroke={
                   hasRowLikeSelection
-                    ? "rgba(239,68,68,0.98)"
-                    : "rgba(10,12,18,0.95)"
+                    ? "rgba(255,80,128,0.98)"
+                    : HONEY_HEX_STROKE_RGBA
                 }
                 strokeWidth="4"
               />
@@ -709,7 +751,7 @@ export default function App() {
                 <polygon
                   points="50,11 85,30 85,70 50,89 15,70 15,30"
                   fill="none"
-                  stroke="rgba(239,68,68,0.98)"
+                  stroke="rgba(255,80,128,0.98)"
                   strokeWidth="4"
                 />
               )}
@@ -721,7 +763,7 @@ export default function App() {
                 width: 12,
                 height: 2,
                 borderRadius: 999,
-                background: canTurnOff ? "rgba(239,68,68,0.98)" : "rgba(255,255,255,0.35)"
+                background: canTurnOff ? "rgba(255,80,128,0.98)" : HONEY_HEX_LABEL
               }}
             />
           </button>
@@ -808,7 +850,11 @@ export default function App() {
                   const isOn = Boolean(info);
                   const isManuallySelected = activeNums.has(n);
                   const isBlocked = manualLimitReached && !isManuallySelected;
-                  const textOpacity = isBlocked ? 0.12 : !anyActive ? 0.55 : isOn ? 0.15 + b * 0.85 : 0.35;
+                  const labelColor = isBlocked
+                    ? "rgba(52,54,58,0.95)"
+                    : isOn
+                      ? `rgba(255,255,255,${0.2 + b * 0.8})`
+                      : HONEY_HEX_LABEL;
                   return (
                     <div
                       key={n}
@@ -827,8 +873,8 @@ export default function App() {
                         justifyContent: "center",
                         fontSize: 12,
                         fontWeight: 700,
-                        color: isBlocked ? "rgba(40,40,40,0.95)" : `rgba(255,255,255,${textOpacity})`,
-                        textShadow: textOpacity > 0.6 ? "0 1px 3px rgba(0,0,0,0.5)" : "none",
+                        color: labelColor,
+                        textShadow: isOn ? ROW_NUM_TEXT_SHADOW_LIT : isBlocked ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
                         pointerEvents: "auto",
                         cursor: isBlocked ? "not-allowed" : "pointer"
                       }}
@@ -983,7 +1029,7 @@ export default function App() {
                     gap: 6,
                     padding: "7px 8px",
                     marginBottom: 4,
-                    background: isCurrent ? `${color}14` : "#15151f",
+                    background: isCurrent ? `${color}14` : UI_CARD,
                     border: `2px solid ${isCurrent ? color : "rgba(255,255,255,0.06)"}`,
                     borderRadius: 8,
                     cursor: "pointer"
@@ -1014,7 +1060,7 @@ export default function App() {
                         if (!n) {
                           return <div key={`${row.id}-empty-${slotIdx}`} style={{ width: 38, height: 34, borderRadius: 5, opacity: 0 }} />;
                         }
-                        const numHue = specHue(n - 1, totalCells);
+                        const th = spectrumHexForNum(n, totalCells);
                         const isOn = Boolean(numBrightness[n]);
                         return (
                           <div
@@ -1028,8 +1074,9 @@ export default function App() {
                               justifyContent: "center",
                               fontSize: 14,
                               fontWeight: 600,
-                              color: isOn ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.5)",
-                              background: isOn ? `hsla(${numHue}, 72%, 40%, 0.8)` : "rgba(255,255,255,0.04)"
+                              color: isOn ? "rgba(255,255,255,0.95)" : HONEY_HEX_LABEL,
+                              background: isOn ? themeRgba(th, 0.82) : UI_NUM_CELL_IDLE,
+                              textShadow: isOn ? ROW_NUM_TEXT_SHADOW_LIT : ROW_NUM_TEXT_SHADOW_IDLE
                             }}
                           >
                             {n}
@@ -1118,7 +1165,7 @@ export default function App() {
                 gap: 6,
                 padding: "7px 8px",
                 marginBottom: 4,
-                background: isOnion ? `${color}14` : "#15151f",
+                background: isOnion ? `${color}14` : UI_CARD,
                 border: `2px solid ${
                   isCurrent ? color : isOnion ? `${color}40` : activeCount > 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)"
                 }`,
@@ -1149,7 +1196,7 @@ export default function App() {
               <div style={{ display: "flex", gap: 4, flex: 1, justifyContent: "center" }}>
                   {row.nums.map((n, ci) => {
                     const numOn = n >= 1 && n <= totalCells && Boolean(numBrightness[n]);
-                    const numHue = specHue(n - 1, totalCells);
+                    const th = spectrumHexForNum(n, totalCells);
                     const b = numBrightness[n]?.brightness || 0;
                     return (
                       <div
@@ -1163,8 +1210,9 @@ export default function App() {
                           justifyContent: "center",
                           fontSize: 14,
                           fontWeight: 600,
-                          color: numOn ? `rgba(255,255,255,${0.3 + b * 0.7})` : "rgba(255,255,255,0.35)",
-                          background: numOn ? `hsla(${numHue}, 72%, 40%, ${0.15 + b * 0.85})` : "rgba(255,255,255,0.03)",
+                          color: numOn ? `rgba(255,255,255,${0.3 + b * 0.7})` : HONEY_HEX_LABEL,
+                          background: numOn ? themeRgba(th, 0.15 + b * 0.85) : UI_NUM_CELL_IDLE,
+                          textShadow: numOn ? ROW_NUM_TEXT_SHADOW_LIT : ROW_NUM_TEXT_SHADOW_IDLE,
                           transition: "all 0.25s"
                         }}
                       >
@@ -1174,10 +1222,10 @@ export default function App() {
                   })}
                   {(() => {
                     const bonusOn = row.bonus >= 1 && row.bonus <= totalCells && Boolean(numBrightness[row.bonus]);
-                    const bonusHue = specHue(row.bonus - 1, totalCells);
+                    const bonusHex = spectrumHexForNum(row.bonus, totalCells);
                     const bonusBrightness = numBrightness[row.bonus]?.brightness || 0;
                     const textAlpha = bonusOn ? (0.3 + bonusBrightness * 0.7) * 0.5 : 0.35 * 0.5;
-                    const bgAlpha = bonusOn ? (0.15 + bonusBrightness * 0.85) * 0.5 : 0.03 * 0.5;
+                    const bgAlpha = (0.15 + bonusBrightness * 0.85) * 0.5;
                     return (
                       <div
                         style={{
@@ -1190,8 +1238,9 @@ export default function App() {
                           fontSize: 14,
                           fontWeight: 600,
                           color: `rgba(255,255,255,${textAlpha})`,
-                          background: bonusOn ? `hsla(${bonusHue}, 72%, 40%, ${bgAlpha})` : `rgba(255,255,255,${bgAlpha})`,
+                          background: bonusOn ? themeRgba(bonusHex, bgAlpha) : UI_NUM_CELL_IDLE,
                           border: "1px dashed rgba(255,255,255,0.2)",
+                          textShadow: bonusOn ? ROW_NUM_TEXT_SHADOW_LIT : ROW_NUM_TEXT_SHADOW_IDLE,
                           transition: "all 0.25s"
                         }}
                         title="Bonus number"
@@ -1220,8 +1269,8 @@ export default function App() {
               right: 0,
               zIndex: 20,
               paddingBottom: "env(safe-area-inset-bottom, 0px)",
-              background: "rgba(12,12,20,0.95)",
-              borderTop: "1px solid rgba(255,255,255,0.08)",
+              background: UI_NAV_BG,
+              borderTop: "1px solid rgba(255,255,255,0.1)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)"
             }}
@@ -1257,7 +1306,7 @@ export default function App() {
                     >
                       {currentRow + 1}
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 400, color: "rgba(255,255,255,0.35)" }}>/ {ROWS.length}</span>
+                    <span style={{ fontSize: 12, fontWeight: 400, color: HONEY_HEX_LABEL }}>/ {ROWS.length}</span>
                   </>
                 ) : (
                   <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>-</span>

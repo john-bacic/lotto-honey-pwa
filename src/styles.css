@@ -8,7 +8,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0c0c14;
+  background: #212226;
 }
 
 #root {
@@ -19,7 +19,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #0c0c14;
+  background: #212226;
 }
 
 @media (display-mode: standalone), (display-mode: fullscreen) {
@@ -42,7 +42,7 @@ html.doc-scroll-ios {
   overflow-x: hidden;
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
-  background: #0c0c14;
+  background: #212226;
 }
 
 html.doc-scroll-ios body {
@@ -50,7 +50,7 @@ html.doc-scroll-ios body {
   height: auto;
   overflow-x: hidden;
   overflow-y: visible;
-  background: #0c0c14;
+  background: #212226;
 }
 
 html.doc-scroll-ios #root {
