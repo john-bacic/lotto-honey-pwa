@@ -855,90 +855,102 @@ export default function App() {
         >
           <div
             style={{
-              display: "flex",
+              display: "grid",
+              gridTemplateColumns: "1fr auto 1fr",
               alignItems: "center",
-              gap: 8,
+              columnGap: 8,
               marginBottom: 4,
               width: "100%"
             }}
           >
-            <button
-              onClick={saveManualRow}
-              disabled={manualCount === 0}
-              style={{
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: manualCount > 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
-                color: manualCount > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)",
-                borderRadius: 999,
-                height: 24,
-                padding: "0 10px",
-                fontSize: 10,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                cursor: manualCount > 0 ? "pointer" : "not-allowed",
-                fontFamily: "Outfit,sans-serif",
-                flexShrink: 0
-              }}
-            >
-              Save {manualCount}
-            </button>
-            {topDraw && (
-              <span
+            <div style={{ justifySelf: "start", minWidth: 0 }}>
+              <button
+                onClick={saveManualRow}
+                disabled={manualCount === 0}
                 style={{
-                  flex: 1,
-                  minWidth: 0,
-                  textAlign: "center",
-                  fontSize: 14,
-                  fontWeight: 500,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: manualCount > 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
+                  color: manualCount > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)",
+                  borderRadius: 999,
+                  height: 24,
+                  padding: "0 10px",
+                  fontSize: 10,
                   letterSpacing: 1,
-                  textTransform: "none",
-                  color: topRowColor,
-                  lineHeight: 1.25
+                  textTransform: "uppercase",
+                  cursor: manualCount > 0 ? "pointer" : "not-allowed",
+                  fontFamily: "Outfit,sans-serif",
+                  flexShrink: 0
                 }}
               >
-                {formatDrawDateJackpot(topDraw.date, topDraw.jackpot)}
-              </span>
-            )}
-            {!topDraw && <span style={{ flex: 1, minWidth: 0 }} aria-hidden="true" />}
-            {savedRows.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                <button
-                  onClick={() => setSavedOpen((prev) => !prev)}
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    background: "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.6)",
-                    borderRadius: 999,
-                    height: 24,
-                    padding: "0 10px",
-                    fontSize: 10,
-                    letterSpacing: 1,
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                    fontFamily: "Outfit,sans-serif"
-                  }}
-                >
-                  {savedOpen ? "Hide" : "Show"} ({savedRows.length})
-                </button>
-                <button
-                  onClick={() => setSavedLocked((prev) => !prev)}
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    background: savedLocked ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer"
-                  }}
-                  title={savedLocked ? "Unlock all saved rows" : "Lock all saved rows"}
-                >
-                  <LockIcon locked={savedLocked} color={savedLocked ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.6)"} />
-                </button>
-              </div>
-            )}
+                Save {manualCount}
+              </button>
+            </div>
+            <div
+              style={{
+                justifySelf: "center",
+                textAlign: "center",
+                minWidth: 0,
+                maxWidth: "100%",
+                fontSize: 14,
+                fontWeight: 500,
+                letterSpacing: 1,
+                textTransform: "none",
+                color: topRowColor,
+                lineHeight: 1.25
+              }}
+            >
+              {topDraw ? formatDrawDateJackpot(topDraw.date, topDraw.jackpot) : null}
+            </div>
+            <div
+              style={{
+                justifySelf: "end",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexShrink: 0,
+                minHeight: 24
+              }}
+            >
+              {savedRows.length > 0 && (
+                <>
+                  <button
+                    onClick={() => setSavedOpen((prev) => !prev)}
+                    style={{
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      background: "rgba(255,255,255,0.04)",
+                      color: "rgba(255,255,255,0.6)",
+                      borderRadius: 999,
+                      height: 24,
+                      padding: "0 10px",
+                      fontSize: 10,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                      fontFamily: "Outfit,sans-serif"
+                    }}
+                  >
+                    {savedOpen ? "Hide" : "Show"} ({savedRows.length})
+                  </button>
+                  <button
+                    onClick={() => setSavedLocked((prev) => !prev)}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      background: savedLocked ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer"
+                    }}
+                    title={savedLocked ? "Unlock all saved rows" : "Lock all saved rows"}
+                  >
+                    <LockIcon locked={savedLocked} color={savedLocked ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.6)"} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
