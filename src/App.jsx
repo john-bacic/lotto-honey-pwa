@@ -853,8 +853,8 @@ export default function App() {
       >
         <div
           style={{
-            display: "flex",
-            flexDirection: "row",
+            display: "grid",
+            gridTemplateColumns: "1fr auto 1fr",
             alignItems: "center",
             width: "100%",
             paddingLeft: 14,
@@ -865,6 +865,7 @@ export default function App() {
             flexShrink: 0
           }}
         >
+          <div style={{ justifySelf: "start" }}>
           <button
             onClick={clearAll}
             style={{
@@ -919,17 +920,9 @@ export default function App() {
               }}
             />
           </button>
+          </div>
 
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minWidth: 0,
-              alignSelf: "stretch"
-            }}
-          >
+          <div style={{ justifySelf: "center" }}>
             <button
               type="button"
               onClick={() => (honeycombVisible ? hideHoneycomb() : setHoneycombVisible(true))}
@@ -966,6 +959,7 @@ export default function App() {
 
           <div
             style={{
+              justifySelf: "end",
               position: "relative",
               height: 32,
               borderRadius: 999,
