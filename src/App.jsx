@@ -13,6 +13,10 @@ const HONEY_HEX_STROKE_RGBA = "rgba(42,43,49,0.95)";
 const HONEY_HEX_LABEL = "#757575";
 /** Toolbar accent (minus bar, inner hex stroke when row-selected, etc.) */
 const TOOLBAR_ACCENT_PINK = "rgba(255,80,128,0.98)";
+/** Saved rows when unlocked — same RGB as × / lock accent, lower alpha for fill */
+const SAVED_ROW_UNLOCKED_BG = "rgba(255,80,128,0.18)";
+/** Saved rows when locked — green (same hue as ROW_COLORS mint #00ff8c) */
+const SAVED_ROW_LOCKED_BG = "rgba(0, 255, 140, 0.14)";
 const HEX_FILL = 0x323339;
 const HEX_RING = 0x2a2b31;
 /** Idle row/honeycomb labels */
@@ -1191,8 +1195,8 @@ export default function App() {
   const hasManualClear = activeNums.size > 0;
   const topDraw = currentRow >= 0 ? ROWS[currentRow] : ROWS[0] ?? null;
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
-  /** Last draw date + jackpot only while a winning or saved row stays selected (all rows “off” → blank). */
-  const showHeaderDrawInfo = canTurnOff && hasRowLikeSelection;
+  /** Date + jackpot in toolbar only when a winning row is selected (saved-only → blank). */
+  const showHeaderDrawDateJackpot = canTurnOff && hasRowLikeSelection && currentRow >= 0;
 
   const rowsScrollBottomPad = showPwaBottomRowNav
     ? `calc(${NAV_H + 20}px + env(safe-area-inset-bottom, 0px))`
@@ -1653,11 +1657,11 @@ export default function App() {
                 fontWeight: 500,
                 letterSpacing: 1,
                 textTransform: "none",
-                color: showHeaderDrawInfo ? topRowColor : "rgba(255,255,255,0.25)",
+                color: showHeaderDrawDateJackpot ? topRowColor : "rgba(255,255,255,0.25)",
                 lineHeight: 1.25
               }}
             >
-              {showHeaderDrawInfo && topDraw
+              {showHeaderDrawDateJackpot && topDraw
                 ? formatDrawDateJackpot(topDraw.date, topDraw.jackpot)
                 : "\u00a0"}
             </div>
@@ -1778,7 +1782,12 @@ export default function App() {
             savedRows.map((row, ri) => {
               const color = ROW_COLORS[ri % ROW_COLORS.length];
               const isCurrent = selectedSavedId === row.id;
-              const savedRowBg = isCurrent ? `${color}14` : "rgb(78,52,58)";
+              /** Selected: same idea as winning rows — near-UI gray with a hint of row stripe (`${color}14` onion tint); a touch darker than 14. */
+              const savedRowBg = isCurrent
+                ? `${color}10`
+                : savedLocked
+                  ? SAVED_ROW_LOCKED_BG
+                  : SAVED_ROW_UNLOCKED_BG;
               return (
                 <div
                   key={row.id}
@@ -1843,7 +1852,7 @@ export default function App() {
                               fontSize: 14,
                               fontWeight: 600,
                               color: numOn ? LIT_NUM_COLOR : "rgba(255,255,255,0.75)",
-                              background: numOn ? themeRgba(th, 0.15 + b * 0.85) : savedRowBg,
+                              background: numOn ? themeRgba(th, 0.15 + b * 0.85) : "transparent",
                               textShadow: numOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
                               transition: "all 0.25s",
                               cursor: honeycombVisible ? "inherit" : "pointer"
