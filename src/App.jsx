@@ -607,6 +607,15 @@ export default function App() {
     setSelectedSavedId(id);
     setCurrentRow(-1);
     setSavedOpen(true);
+    requestAnimationFrame(() => {
+      if (documentScrollIos) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      if (scrollRootRef.current) {
+        scrollRootRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
     if (saveHeartClearRef.current) clearTimeout(saveHeartClearRef.current);
     setSaveHeartBurstKey((k) => k + 1);
     setSaveHeartFilled(true);
@@ -1566,7 +1575,7 @@ export default function App() {
                 fontWeight: 300,
                 letterSpacing: 3,
                 textTransform: "uppercase",
-                color: "rgba(255,255,255,0.25)"
+                color: "rgba(210,224,255,0.3)"
               }}
             >
               <span>Saved</span>
@@ -1577,6 +1586,7 @@ export default function App() {
             savedRows.map((row, ri) => {
               const color = ROW_COLORS[ri % ROW_COLORS.length];
               const isCurrent = selectedSavedId === row.id;
+              const savedRowBg = isCurrent ? `${color}14` : "rgb(78,52,58)";
               return (
                 <div
                   key={row.id}
@@ -1587,7 +1597,7 @@ export default function App() {
                     gap: 6,
                     padding: "7px 8px",
                     marginBottom: 4,
-                    background: isCurrent ? `${color}14` : UI_CARD,
+                    background: savedRowBg,
                     border: `2px solid ${isCurrent ? color : "rgba(255,255,255,0.06)"}`,
                     borderRadius: 8,
                     cursor: "pointer"
@@ -1634,8 +1644,8 @@ export default function App() {
                               justifyContent: "center",
                               fontSize: 14,
                               fontWeight: 600,
-                              color: numOn ? LIT_NUM_COLOR : HONEY_HEX_LABEL,
-                              background: numOn ? themeRgba(th, 0.15 + b * 0.85) : UI_NUM_CELL_IDLE,
+                              color: numOn ? LIT_NUM_COLOR : "rgba(255,255,255,0.75)",
+                              background: numOn ? themeRgba(th, 0.15 + b * 0.85) : savedRowBg,
                               textShadow: numOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
                               transition: "all 0.25s",
                               cursor: honeycombVisible ? "inherit" : "pointer"
