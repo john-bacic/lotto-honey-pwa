@@ -619,6 +619,11 @@ export default function App() {
     }
     const ordered = Array.from(nums).sort((a, b) => a - b);
 
+    if (onionCount > 0) {
+      setSelectionRevealNums(new Set(ordered));
+      return;
+    }
+
     setSelectionRevealNums(new Set());
     ordered.forEach((n, idx) => {
       const t = setTimeout(() => {
@@ -630,7 +635,7 @@ export default function App() {
       }, idx * 55);
       selectionRevealTimersRef.current.push(t);
     });
-  }, [currentRow, selectedSavedId, activeRowList, savedRows, totalCells]);
+  }, [currentRow, selectedSavedId, activeRowList, savedRows, totalCells, onionCount]);
 
   const numBrightness = useMemo(() => {
     const map = {};
@@ -733,7 +738,8 @@ export default function App() {
       if (!prevLitNumsRef.current.has(n)) newlyLit.push(n);
     });
     if (newlyLit.length > 0) {
-      const staggered = currentRow >= 0 || selectedSavedId !== null;
+      const staggered =
+        onionCount === 0 && (currentRow >= 0 || selectedSavedId !== null);
       const sortedNewlyLit = newlyLit.sort((a, b) => a - b);
       sortedNewlyLit.forEach((n, idx) => {
         const oldStart = litAnimStartTimersRef.current.get(n);
@@ -765,7 +771,7 @@ export default function App() {
       });
     }
     prevLitNumsRef.current = currentlyLit;
-  }, [numBrightness, totalCells, currentRow, selectedSavedId]);
+  }, [numBrightness, totalCells, currentRow, selectedSavedId, onionCount]);
 
   const anyActive = Object.keys(numBrightness).length > 0;
   const manualCount = activeNums.size;
