@@ -1601,92 +1601,6 @@ export default function App() {
               }}
             >
               {savedRows.length > 0 && (
-                <>
-                  {savedOpen && (
-                    <button
-                      type="button"
-                      onClick={toggleSavedLock}
-                      style={{
-                        position: "relative",
-                        width: 44,
-                        height: 44,
-                        padding: 0,
-                        border: "none",
-                        background: "transparent",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        flexShrink: 0
-                      }}
-                      title={savedLocked ? "Unlock all saved rows" : "Lock all saved rows"}
-                    >
-                      {savedLocked ? (
-                        <>
-                          <svg
-                            width="44"
-                            height="44"
-                            viewBox="0 0 100 100"
-                            style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                            aria-hidden="true"
-                          >
-                            <polygon
-                              points="50,2 93,25 93,75 50,98 7,75 7,25"
-                              fill={HONEY_HEX_FACE_RGBA}
-                              stroke="none"
-                            />
-                          </svg>
-                          <span
-                            style={{
-                              position: "relative",
-                              zIndex: 1,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center"
-                            }}
-                          >
-                            <LockIcon locked color={TOOLBAR_ACCENT_PINK} />
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            width="44"
-                            height="44"
-                            viewBox="0 0 100 100"
-                            style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                            aria-hidden="true"
-                          >
-                            <polygon
-                              points="50,2 93,25 93,75 50,98 7,75 7,25"
-                              fill="rgba(255,255,255,0.05)"
-                              stroke={HONEY_HEX_STROKE_RGBA}
-                              strokeWidth="4"
-                            />
-                          </svg>
-                          <span
-                            style={{
-                              position: "relative",
-                              zIndex: 1,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontFamily: "'Outfit', system-ui, sans-serif",
-                              fontSize: 20,
-                              fontWeight: 500,
-                              lineHeight: 1,
-                              color: TOOLBAR_ACCENT_PINK,
-                              pointerEvents: "none",
-                              userSelect: "none"
-                            }}
-                            aria-hidden="true"
-                          >
-                            ※
-                          </span>
-                        </>
-                      )}
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={() => setSavedOpen((prev) => !prev)}
@@ -1730,7 +1644,6 @@ export default function App() {
                     </svg>
                     <HexToolbarChevron pointUp={savedOpen} chevronFill={TOOLBAR_ACCENT_PINK} />
                   </button>
-                </>
               )}
             </div>
           </div>
@@ -1752,8 +1665,41 @@ export default function App() {
       {savedOpen && (
         <div ref={savedSectionRef} style={{ flexShrink: 0 }}>
           {savedRows.length > 0 && (
-            <div style={SECTION_LIST_LABEL_STYLE}>
-              <span>Saved</span>
+            <div
+              style={{
+                ...SECTION_LIST_LABEL_STYLE,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 4,
+                padding: "8px 8px 4px 14px"
+              }}
+            >
+              <span style={{ lineHeight: 1 }}>Saved</span>
+              <button
+                type="button"
+                onClick={toggleSavedLock}
+                style={{
+                  width: 24,
+                  height: 24,
+                  marginRight: 3,
+                  borderRadius: 999,
+                  border: "none",
+                  background: "transparent",
+                  color: savedLocked ? "rgba(255,255,255,0.55)" : TOOLBAR_ACCENT_PINK,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  padding: 0,
+                  fontSize: 14,
+                  lineHeight: 1,
+                  cursor: "pointer"
+                }}
+                title={savedLocked ? "Unlock all saved rows" : "Lock all saved rows"}
+              >
+                {savedLocked ? <LockIcon locked color={TOOLBAR_ACCENT_PINK} size={12} /> : "×"}
+              </button>
             </div>
           )}
           <div style={{ flexShrink: 0, padding: `${SECTION_LIST_ROWS_PADDING_TOP}px 0 6px` }}>
