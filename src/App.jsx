@@ -1397,96 +1397,9 @@ export default function App() {
           </div>
 
           <div
-            style={{
-              justifySelf: "end",
-              position: "relative",
-              display: "flex",
-              alignItems: "center",
-              gap: 0,
-              flexShrink: 0,
-              alignSelf: "center",
-              minHeight: 44
-            }}
-          >
-              {onionCount > 0 ? (
-                <>
-                  <OnionGlyphIcon />
-                  <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0, marginLeft: -5 }}>
-                    <svg
-                      width="44"
-                      height="44"
-                      viewBox="0 0 100 100"
-                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                      aria-hidden="true"
-                    >
-                      <polygon
-                        points="50,2 93,25 93,75 50,98 7,75 7,25"
-                        fill={HONEY_HEX_FACE_RGBA}
-                        stroke="rgba(255,80,128,0.55)"
-                        strokeWidth="4"
-                      />
-                    </svg>
-                    <span
-                      style={{
-                        position: "absolute",
-                        left: "50%",
-                        top: "50%",
-                        transform: "translate(-50%, -50%)",
-                        zIndex: 1,
-                        fontSize: 13,
-                        fontWeight: 700,
-                        fontFamily: "'Outfit', -apple-system, sans-serif",
-                        color: "rgba(255,255,255,0.92)",
-                        pointerEvents: "none",
-                        lineHeight: 1
-                      }}
-                    >
-                      {onionCount}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
-                  <svg
-                    width="44"
-                    height="44"
-                    viewBox="0 0 100 100"
-                    style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                    aria-hidden="true"
-                  >
-                    <polygon
-                      points="50,2 93,25 93,75 50,98 7,75 7,25"
-                      fill="rgba(255,255,255,0.05)"
-                      stroke={HONEY_HEX_STROKE_RGBA}
-                      strokeWidth="4"
-                    />
-                  </svg>
-                  <OnionGlyphIcon off />
-                </div>
-              )}
-              <select
-                aria-label="Onion skin level"
-                value={onionIdx}
-                onChange={(e) => setOnionIdx(Number(e.target.value))}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  opacity: 0,
-                  width: "100%",
-                  height: "100%",
-                  border: "none",
-                  cursor: "pointer",
-                  outline: "none"
-                }}
-              >
-                <option value={0}>off</option>
-                {ONION_LEVELS.map((level, idx) => (
-                  <option key={level} value={idx + 1}>
-                    {level}
-                  </option>
-                ))}
-              </select>
-          </div>
+            style={{ justifySelf: "end", width: 44, height: 44, flexShrink: 0, alignSelf: "center" }}
+            aria-hidden="true"
+          />
         </div>
 
         <div
@@ -1675,40 +1588,65 @@ export default function App() {
               style={{
                 justifySelf: "end",
                 display: "flex",
+                flexDirection: "row",
                 alignItems: "center",
+                justifyContent: "flex-end",
                 gap: 6,
                 flexShrink: 0,
-                minHeight: 44
+                minHeight: 44,
+                /** Honeycomb hidden: shift up by one toolbar hex (same size as show/hide honeycomb). */
+                marginTop: honeycombVisible ? 0 : -44
               }}
             >
-              {savedRows.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSavedOpen((prev) => !prev)}
-                    aria-label={
-                      savedOpen
-                        ? `Collapse saved numbers (${savedRows.length})`
-                        : `Expand saved numbers (${savedRows.length})`
-                    }
-                    title={
-                      savedOpen
-                        ? `Hide saved rows (${savedRows.length})`
-                        : `Show saved rows (${savedRows.length})`
-                    }
-                    style={{
-                      position: "relative",
-                      width: 44,
-                      height: 44,
-                      padding: 0,
-                      border: "none",
-                      background: "transparent",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      flexShrink: 0
-                    }}
-                  >
+              <div
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0,
+                  flexShrink: 0,
+                  minHeight: 44
+                }}
+              >
+                {onionCount > 0 ? (
+                  <>
+                    <OnionGlyphIcon />
+                    <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0, marginLeft: -5 }}>
+                      <svg
+                        width="44"
+                        height="44"
+                        viewBox="0 0 100 100"
+                        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                        aria-hidden="true"
+                      >
+                        <polygon
+                          points="50,2 93,25 93,75 50,98 7,75 7,25"
+                          fill={HONEY_HEX_FACE_RGBA}
+                          stroke="rgba(255,80,128,0.55)"
+                          strokeWidth="4"
+                        />
+                      </svg>
+                      <span
+                        style={{
+                          position: "absolute",
+                          left: "50%",
+                          top: "50%",
+                          transform: "translate(-50%, -50%)",
+                          zIndex: 1,
+                          fontSize: 13,
+                          fontWeight: 700,
+                          fontFamily: "'Outfit', -apple-system, sans-serif",
+                          color: "rgba(255,255,255,0.92)",
+                          pointerEvents: "none",
+                          lineHeight: 1
+                        }}
+                      >
+                        {onionCount}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
                     <svg
                       width="44"
                       height="44"
@@ -1718,14 +1656,82 @@ export default function App() {
                     >
                       <polygon
                         points="50,2 93,25 93,75 50,98 7,75 7,25"
-                        fill={HONEY_HEX_FACE_RGBA}
+                        fill="rgba(255,255,255,0.05)"
                         stroke={HONEY_HEX_STROKE_RGBA}
                         strokeWidth="4"
                       />
                     </svg>
-                    <HexToolbarChevron pointUp={savedOpen} chevronFill={TOOLBAR_ACCENT_PINK} />
-                  </button>
-              )}
+                    <OnionGlyphIcon off />
+                  </div>
+                )}
+                <select
+                  aria-label="Onion skin level"
+                  value={onionIdx}
+                  onChange={(e) => setOnionIdx(Number(e.target.value))}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    opacity: 0,
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
+                    cursor: "pointer",
+                    outline: "none"
+                  }}
+                >
+                  <option value={0}>off</option>
+                  {ONION_LEVELS.map((level, idx) => (
+                    <option key={level} value={idx + 1}>
+                      {level}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {savedRows.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setSavedOpen((prev) => !prev)}
+                  aria-label={
+                    savedOpen
+                      ? `Collapse saved numbers (${savedRows.length})`
+                      : `Expand saved numbers (${savedRows.length})`
+                  }
+                  title={
+                    savedOpen
+                      ? `Hide saved rows (${savedRows.length})`
+                      : `Show saved rows (${savedRows.length})`
+                  }
+                  style={{
+                    position: "relative",
+                    width: 44,
+                    height: 44,
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    flexShrink: 0
+                  }}
+                >
+                  <svg
+                    width="44"
+                    height="44"
+                    viewBox="0 0 100 100"
+                    style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                    aria-hidden="true"
+                  >
+                    <polygon
+                      points="50,2 93,25 93,75 50,98 7,75 7,25"
+                      fill={HONEY_HEX_FACE_RGBA}
+                      stroke={HONEY_HEX_STROKE_RGBA}
+                      strokeWidth="4"
+                    />
+                  </svg>
+                  <HexToolbarChevron pointUp={savedOpen} chevronFill={TOOLBAR_ACCENT_PINK} />
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
