@@ -20,6 +20,18 @@ const LIT_NUM_COLOR = "#000000";
 /** Bonus chip dashed border — lit digit matches this */
 const BONUS_DASH_RGBA = "rgba(255,255,255,0.2)";
 
+/** Saved / Winning numbers list — shared label + gap above first row (matches rowsRef top pad). */
+const SECTION_LIST_LABEL_STYLE = {
+  padding: "8px 14px 4px",
+  flexShrink: 0,
+  fontSize: 10,
+  fontWeight: 300,
+  letterSpacing: 3,
+  textTransform: "uppercase",
+  color: "rgba(255,255,255,0.25)"
+};
+const SECTION_LIST_ROWS_PADDING_TOP = 4;
+
 /** Down chevron (svgrepo.com); rotate 180° for “up” inside hex toolbar */
 const HEX_CHEVRON_DOWN_PATH =
   "M4.29289 8.29289C4.68342 7.90237 5.31658 7.90237 5.70711 8.29289L12 14.5858L18.2929 8.29289C18.6834 7.90237 19.3166 7.90237 19.7071 8.29289C20.0976 8.68342 20.0976 9.31658 19.7071 9.70711L12.7071 16.7071C12.3166 17.0976 11.6834 17.0976 11.2929 16.7071L4.29289 9.70711C3.90237 9.31658 3.90237 8.68342 4.29289 8.29289Z";
@@ -335,6 +347,10 @@ export default function App() {
   const [saveHeartFilled, setSaveHeartFilled] = useState(false);
   const [saveHeartBurstKey, setSaveHeartBurstKey] = useState(0);
   const saveHeartClearRef = useRef(null);
+  const [newSavedRowId, setNewSavedRowId] = useState(null);
+  const savedRowAnimClearRef = useRef(null);
+  const [savedRowsGlow, setSavedRowsGlow] = useState(false);
+  const savedRowsGlowClearRef = useRef(null);
   const [honeycombVisible, setHoneycombVisible] = useState(true);
   /** When honeycomb is hidden: clicking a ball # in rows toggles that # everywhere */
   const [rowGlobalNums, setRowGlobalNums] = useState(() => new Set());
@@ -382,8 +398,20 @@ export default function App() {
   useEffect(() => {
     return () => {
       if (saveHeartClearRef.current) clearTimeout(saveHeartClearRef.current);
+      if (savedRowAnimClearRef.current) clearTimeout(savedRowAnimClearRef.current);
+      if (savedRowsGlowClearRef.current) clearTimeout(savedRowsGlowClearRef.current);
     };
   }, []);
+
+  function toggleSavedLock() {
+    setSavedLocked((prev) => !prev);
+    setSavedRowsGlow(true);
+    if (savedRowsGlowClearRef.current) clearTimeout(savedRowsGlowClearRef.current);
+    savedRowsGlowClearRef.current = setTimeout(() => {
+      setSavedRowsGlow(false);
+      savedRowsGlowClearRef.current = null;
+    }, 440);
+  }
 
   useEffect(() => {
     const { savedRows: loaded, nextSavedNumber: next } = loadSavedRowsFromStorage();
@@ -604,7 +632,13 @@ export default function App() {
     const id = `saved-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     setSavedRows((prev) => [{ id, nums, savedNumber: nextSavedNumber }, ...prev]);
     setNextSavedNumber((prev) => prev + 1);
-    setSelectedSavedId(id);
+    setSelectedSavedId(null);
+    setNewSavedRowId(id);
+    if (savedRowAnimClearRef.current) clearTimeout(savedRowAnimClearRef.current);
+    savedRowAnimClearRef.current = setTimeout(() => {
+      setNewSavedRowId((prev) => (prev === id ? null : prev));
+      savedRowAnimClearRef.current = null;
+    }, 720);
     setCurrentRow(-1);
     setSavedOpen(true);
     requestAnimationFrame(() => {
@@ -1420,7 +1454,7 @@ export default function App() {
                   {savedOpen && (
                     <button
                       type="button"
-                      onClick={() => setSavedLocked((prev) => !prev)}
+                      onClick={toggleSavedLock}
                       style={{
                         position: "relative",
                         width: 44,
@@ -1567,21 +1601,11 @@ export default function App() {
       {savedOpen && (
         <>
           {savedRows.length > 0 && (
-            <div
-              style={{
-                padding: "8px 14px 4px",
-                flexShrink: 0,
-                fontSize: 10,
-                fontWeight: 300,
-                letterSpacing: 3,
-                textTransform: "uppercase",
-                color: "rgba(210,224,255,0.3)"
-              }}
-            >
+            <div style={SECTION_LIST_LABEL_STYLE}>
               <span>Saved</span>
             </div>
           )}
-          <div style={{ flexShrink: 0, padding: "0 0 6px" }}>
+          <div style={{ flexShrink: 0, padding: `${SECTION_LIST_ROWS_PADDING_TOP}px 0 6px` }}>
           {savedRows.length > 0 &&
             savedRows.map((row, ri) => {
               const color = ROW_COLORS[ri % ROW_COLORS.length];
@@ -1590,6 +1614,12 @@ export default function App() {
               return (
                 <div
                   key={row.id}
+                  className={[
+                    newSavedRowId === row.id ? "saved-row--drop-in" : "",
+                    savedRowsGlow ? "saved-row--lock-glow" : ""
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   onClick={() => tapSavedRow(row.id)}
                   style={{
                     display: "flex",
@@ -1689,24 +1719,14 @@ export default function App() {
         </>
       )}
 
-      <div
-        style={{
-          padding: "8px 14px 4px",
-          flexShrink: 0,
-          fontSize: 10,
-          fontWeight: 300,
-          letterSpacing: 3,
-          textTransform: "uppercase",
-          color: "rgba(255,255,255,0.25)"
-        }}
-      >
+      <div style={SECTION_LIST_LABEL_STYLE}>
         <span>Winning numbers</span>
       </div>
 
       <div
         ref={rowsRef}
         style={{
-          padding: `4px 0 ${rowsScrollBottomPad}`
+          padding: `${SECTION_LIST_ROWS_PADDING_TOP}px 0 ${rowsScrollBottomPad}`
         }}
       >
         {ROWS.map((row, ri) => {
