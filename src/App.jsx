@@ -1990,7 +1990,7 @@ export default function App() {
                 paddingBottom: 8
               }}
             >
-              <NavButton dir={1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atBottomBoundary} />
+              <NavButton dir={-1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atTopBoundary} />
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 60, justifyContent: "center" }}>
                 {savedSelectedIndex >= 0 ? (
                   <>
@@ -2034,7 +2034,7 @@ export default function App() {
                   <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>-</span>
                 )}
               </div>
-              <NavButton dir={-1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atTopBoundary} />
+              <NavButton dir={1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atBottomBoundary} />
             </div>
           </div>
       )}
