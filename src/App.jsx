@@ -400,6 +400,9 @@ export default function App() {
   const [labelPos, setLabelPos] = useState([]);
   const rowsRef = useRef(null);
   const savedSectionRef = useRef(null);
+  /** "Lotto Max - Winning numbers" label — scroll into view after toolbar minus (row off or all nums cleared). */
+  const winningNumbersTitleRef = useRef(null);
+  const toolbarClearScrollWinningTitleRef = useRef(false);
   const scrollRootRef = useRef(null);
   const pinnedHeaderRef = useRef(null);
   const appRootRef = useRef(null);
@@ -563,6 +566,32 @@ export default function App() {
     [documentScrollIos]
   );
 
+  const scrollWinningNumbersTitleIntoView = useCallback(
+    (behavior = "smooth") => {
+      const pinned = pinnedHeaderRef.current;
+      const block = winningNumbersTitleRef.current;
+      if (!pinned || !block) return;
+      const stickyH = pinned.getBoundingClientRect().height;
+      const blockRect = block.getBoundingClientRect();
+
+      if (documentScrollIos) {
+        const delta = blockRect.top - stickyH;
+        if (Math.abs(delta) < 2) return;
+        window.scrollTo({ top: window.scrollY + delta, behavior });
+        return;
+      }
+
+      const root = scrollRootRef.current;
+      if (!root) return;
+      const rootRect = root.getBoundingClientRect();
+      const diff = blockRect.top - rootRect.top;
+      const delta = diff - stickyH;
+      if (Math.abs(delta) < 2) return;
+      root.scrollTo({ top: root.scrollTop + delta, behavior });
+    },
+    [documentScrollIos]
+  );
+
   useLayoutEffect(() => {
     if (!savedOpen || savedRows.length === 0) return;
     let cancelled = false;
@@ -576,6 +605,17 @@ export default function App() {
       cancelAnimationFrame(id);
     };
   }, [savedOpen, savedRows.length, scrollSavedSectionIntoView]);
+
+  /** After toolbar minus: winning row off, or all lit/global numbers cleared (see clearAll). */
+  useLayoutEffect(() => {
+    if (!toolbarClearScrollWinningTitleRef.current) return;
+    toolbarClearScrollWinningTitleRef.current = false;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollWinningNumbersTitleIntoView("smooth");
+      });
+    });
+  }, [currentRow, selectedSavedId, activeNums, rowGlobalNums, scrollWinningNumbersTitleIntoView]);
 
   function readStandalonePwa() {
     if (typeof window === "undefined") return false;
@@ -898,10 +938,14 @@ export default function App() {
 
   function clearAll() {
     if (currentRow >= 0 || selectedSavedId) {
+      if (currentRow >= 0) {
+        toolbarClearScrollWinningTitleRef.current = true;
+      }
       setCurrentRow(-1);
       setSelectedSavedId(null);
       return;
     }
+    toolbarClearScrollWinningTitleRef.current = true;
     setActiveNums(new Set());
     setRowGlobalNums(new Set());
   }
@@ -1916,6 +1960,7 @@ export default function App() {
       )}
 
       <div
+        ref={winningNumbersTitleRef}
         style={{
           ...SECTION_LIST_LABEL_STYLE,
           display: "flex",
