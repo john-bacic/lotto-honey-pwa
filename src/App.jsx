@@ -73,6 +73,12 @@ const ONION_LEVELS = [2, 3, 5, 8, 13, 21];
 
 const ROWS = getDrawRows();
 
+/** `owner/repo` for GitHub REST — override with `VITE_GITHUB_REPO` in `.env` if forked */
+const GITHUB_REPO_FULL =
+  typeof import.meta.env?.VITE_GITHUB_REPO === "string" && String(import.meta.env.VITE_GITHUB_REPO).trim()
+    ? String(import.meta.env.VITE_GITHUB_REPO).trim()
+    : "john-bacic/lotto-honey-pwa";
+
 /**
  * iOS WebKit (Safari, home-screen PWA, iPadOS “desktop” Safari): window scroll +
  * fixed header path. Excludes Chrome/Firefox/Edge on iOS. Inner overflow scroll for others.
@@ -562,6 +568,7 @@ export default function App() {
   }
 
   const [standalonePwa, setStandalonePwa] = useState(readStandalonePwa);
+  const [githubDeployLabel, setGithubDeployLabel] = useState(null);
 
   useEffect(() => {
     function checkStandalone() {
@@ -570,6 +577,87 @@ export default function App() {
     const mq = window.matchMedia("(display-mode: standalone)");
     mq.addEventListener("change", checkStandalone);
     return () => mq.removeEventListener("change", checkStandalone);
+  }, []);
+
+  useEffect(() => {
+    const CACHE_KEY = "lotto-honey-github-deploy-label";
+    const TTL_MS = 5 * 60 * 1000;
+    try {
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.v === "string" && Date.now() - parsed.t < TTL_MS) {
+          setGithubDeployLabel(parsed.v);
+          return;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const ac = new AbortController();
+    let cancelled = false;
+    const headers = {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28"
+    };
+    const base = `https://api.github.com/repos/${GITHUB_REPO_FULL}`;
+
+    function cacheAndSet(v) {
+      if (cancelled || v == null || v === "") return;
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), v }));
+      } catch {
+        /* ignore */
+      }
+      setGithubDeployLabel(v);
+    }
+
+    (async () => {
+      try {
+        const dRes = await fetch(`${base}/deployments?per_page=1`, { signal: ac.signal, headers });
+        if (dRes.ok) {
+          const deployments = await dRes.json();
+          if (Array.isArray(deployments) && deployments[0]?.id != null) {
+            cacheAndSet(String(deployments[0].id));
+            return;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        const wRes = await fetch(`${base}/actions/runs?per_page=1&branch=main`, {
+          signal: ac.signal,
+          headers
+        });
+        if (wRes.ok) {
+          const w = await wRes.json();
+          const run = w.workflow_runs?.[0];
+          if (run?.run_number != null) {
+            cacheAndSet(String(run.run_number));
+            return;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        const cRes = await fetch(`${base}/commits/main?per_page=1`, { signal: ac.signal, headers });
+        if (cRes.ok) {
+          const c = await cRes.json();
+          const sha = typeof c.sha === "string" ? c.sha.slice(0, 7) : null;
+          if (sha) cacheAndSet(sha);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
   }, []);
 
   const onionCount = onionIdx === 0 ? 0 : ONION_LEVELS[onionIdx - 1];
@@ -1827,8 +1915,31 @@ export default function App() {
         </div>
       )}
 
-      <div style={SECTION_LIST_LABEL_STYLE}>
-        <span>Winning numbers</span>
+      <div
+        style={{
+          ...SECTION_LIST_LABEL_STYLE,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10
+        }}
+      >
+        <span>Lotto Max - Winning numbers</span>
+        {githubDeployLabel != null ? (
+          <span
+            style={{
+              flexShrink: 0,
+              fontSize: 9,
+              fontWeight: 500,
+              letterSpacing: 1.2,
+              textTransform: "none",
+              color: "rgba(255,255,255,0.38)"
+            }}
+            title="GitHub: latest deployment id, workflow run number, or main SHA"
+          >
+            {githubDeployLabel}
+          </span>
+        ) : null}
       </div>
 
       <div
