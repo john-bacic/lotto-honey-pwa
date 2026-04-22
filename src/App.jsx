@@ -67,7 +67,8 @@ const HEX_H = 2 * HEX_R;
 const COL_S = HEX_W + 2;
 const ROW_S = HEX_H * 0.75 + 1.5;
 const CANVAS_H = 430;
-const NAV_H = 68;
+/** PWA standalone bottom nav — keep rowsScrollBottomPad in sync when changing */
+const NAV_H = 58;
 const ONION_LEVELS = [2, 3, 5, 8, 13, 21];
 
 const ROWS = getDrawRows();
@@ -1985,9 +1986,9 @@ export default function App() {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 24,
-                minHeight: NAV_H + 8,
-                paddingTop: 8,
-                paddingBottom: 8
+                minHeight: NAV_H + 4,
+                paddingTop: 6,
+                paddingBottom: 6
               }}
             >
               <NavButton dir={-1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atTopBoundary} />
