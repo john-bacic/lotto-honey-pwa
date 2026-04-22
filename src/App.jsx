@@ -11,6 +11,8 @@ const UI_NAV_BG = "rgba(45, 45, 50, 0.96)";
 const HONEY_HEX_FACE_RGBA = "rgba(50,51,57,0.98)";
 const HONEY_HEX_STROKE_RGBA = "rgba(42,43,49,0.95)";
 const HONEY_HEX_LABEL = "#757575";
+/** Toolbar accent (minus bar, inner hex stroke when row-selected, etc.) */
+const TOOLBAR_ACCENT_PINK = "rgba(255,80,128,0.98)";
 const HEX_FILL = 0x323339;
 const HEX_RING = 0x2a2b31;
 /** Idle row/honeycomb labels */
@@ -277,7 +279,7 @@ function LockIcon({ locked, color = "rgba(255,255,255,0.65)", size = 13 }) {
   );
 }
 
-function HexToolbarChevron({ pointUp }) {
+function HexToolbarChevron({ pointUp, chevronFill = HONEY_HEX_LABEL }) {
   return (
     <span
       style={{
@@ -304,7 +306,7 @@ function HexToolbarChevron({ pointUp }) {
           transformOrigin: "50% 50%"
         }}
       >
-        <path fillRule="evenodd" clipRule="evenodd" d={HEX_CHEVRON_DOWN_PATH} fill={HONEY_HEX_LABEL} />
+        <path fillRule="evenodd" clipRule="evenodd" d={HEX_CHEVRON_DOWN_PATH} fill={chevronFill} />
       </svg>
     </span>
   );
@@ -366,6 +368,7 @@ export default function App() {
   const enableRowAutoScrollRef = useRef(false);
   const [labelPos, setLabelPos] = useState([]);
   const rowsRef = useRef(null);
+  const savedSectionRef = useRef(null);
   const scrollRootRef = useRef(null);
   const pinnedHeaderRef = useRef(null);
   const appRootRef = useRef(null);
@@ -500,6 +503,46 @@ export default function App() {
     },
     [documentScrollIos]
   );
+
+  const scrollSavedSectionIntoView = useCallback(
+    (behavior = "smooth") => {
+      const pinned = pinnedHeaderRef.current;
+      const block = savedSectionRef.current;
+      if (!pinned || !block) return;
+      const stickyH = pinned.getBoundingClientRect().height;
+      const blockRect = block.getBoundingClientRect();
+
+      if (documentScrollIos) {
+        const delta = blockRect.top - stickyH;
+        if (Math.abs(delta) < 2) return;
+        window.scrollTo({ top: window.scrollY + delta, behavior });
+        return;
+      }
+
+      const root = scrollRootRef.current;
+      if (!root) return;
+      const rootRect = root.getBoundingClientRect();
+      const diff = blockRect.top - rootRect.top;
+      const delta = diff - stickyH;
+      if (Math.abs(delta) < 2) return;
+      root.scrollTo({ top: root.scrollTop + delta, behavior });
+    },
+    [documentScrollIos]
+  );
+
+  useLayoutEffect(() => {
+    if (!savedOpen || savedRows.length === 0) return;
+    let cancelled = false;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) scrollSavedSectionIntoView("smooth");
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(id);
+    };
+  }, [savedOpen, savedRows.length, scrollSavedSectionIntoView]);
 
   function readStandalonePwa() {
     if (typeof window === "undefined") return false;
@@ -757,15 +800,6 @@ export default function App() {
     }, 720);
     setCurrentRow(-1);
     setSavedOpen(true);
-    requestAnimationFrame(() => {
-      if (documentScrollIos) {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
-      if (scrollRootRef.current) {
-        scrollRootRef.current.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    });
     if (saveHeartClearRef.current) clearTimeout(saveHeartClearRef.current);
     setSaveHeartBurstKey((k) => k + 1);
     setSaveHeartFilled(true);
@@ -1218,18 +1252,14 @@ export default function App() {
               <polygon
                 points="50,2 93,25 93,75 50,98 7,75 7,25"
                 fill={canTurnOff ? HONEY_HEX_FACE_RGBA : "rgba(255,255,255,0.05)"}
-                stroke={
-                  hasRowLikeSelection
-                    ? "rgba(255,80,128,0.98)"
-                    : HONEY_HEX_STROKE_RGBA
-                }
+                stroke={hasRowLikeSelection ? TOOLBAR_ACCENT_PINK : HONEY_HEX_STROKE_RGBA}
                 strokeWidth="4"
               />
               {hasManualClear && (
                 <polygon
                   points="50,11 85,30 85,70 50,89 15,70 15,30"
                   fill="none"
-                  stroke="rgba(255,80,128,0.98)"
+                  stroke={TOOLBAR_ACCENT_PINK}
                   strokeWidth="4"
                 />
               )}
@@ -1241,7 +1271,7 @@ export default function App() {
                 width: 12,
                 height: 2,
                 borderRadius: 999,
-                background: canTurnOff ? "rgba(255,80,128,0.98)" : HONEY_HEX_LABEL
+                background: canTurnOff ? TOOLBAR_ACCENT_PINK : HONEY_HEX_LABEL
               }}
             />
           </button>
@@ -1615,7 +1645,7 @@ export default function App() {
                               justifyContent: "center"
                             }}
                           >
-                            <LockIcon locked color={HONEY_HEX_LABEL} />
+                            <LockIcon locked color={TOOLBAR_ACCENT_PINK} />
                           </span>
                         </>
                       ) : (
@@ -1645,7 +1675,7 @@ export default function App() {
                               fontSize: 20,
                               fontWeight: 500,
                               lineHeight: 1,
-                              color: HONEY_HEX_LABEL,
+                              color: TOOLBAR_ACCENT_PINK,
                               pointerEvents: "none",
                               userSelect: "none"
                             }}
@@ -1698,7 +1728,7 @@ export default function App() {
                         strokeWidth="4"
                       />
                     </svg>
-                    <HexToolbarChevron pointUp={savedOpen} />
+                    <HexToolbarChevron pointUp={savedOpen} chevronFill={TOOLBAR_ACCENT_PINK} />
                   </button>
                 </>
               )}
@@ -1720,7 +1750,7 @@ export default function App() {
       )}
 
       {savedOpen && (
-        <>
+        <div ref={savedSectionRef} style={{ flexShrink: 0 }}>
           {savedRows.length > 0 && (
             <div style={SECTION_LIST_LABEL_STYLE}>
               <span>Saved</span>
@@ -1831,13 +1861,13 @@ export default function App() {
                     }}
                     title={savedLocked ? "All saved rows are locked" : "Delete saved row"}
                   >
-                    {savedLocked ? <LockIcon locked color="rgba(255,255,255,0.6)" /> : "×"}
+                    {savedLocked ? <LockIcon locked color={TOOLBAR_ACCENT_PINK} /> : "×"}
                   </button>
                 </div>
               );
             })}
           </div>
-        </>
+        </div>
       )}
 
       <div style={SECTION_LIST_LABEL_STYLE}>
