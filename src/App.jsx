@@ -80,6 +80,22 @@ const GITHUB_REPO_FULL =
     : "john-bacic/lotto-honey-pwa";
 
 /**
+ * Short SHA for **this** bundle — Vercel sets `VERCEL_GIT_COMMIT_SHA` at build time (new value every deploy).
+ * Also reads `__BUILD_GIT_SHA__` from vite `define` as a fallback for the same value.
+ */
+function shortShaFromThisBuild() {
+  const injected =
+    typeof __BUILD_GIT_SHA__ !== "undefined" && __BUILD_GIT_SHA__ ? String(__BUILD_GIT_SHA__).trim() : "";
+  const fromEnv =
+    typeof import.meta.env.VERCEL_GIT_COMMIT_SHA === "string"
+      ? import.meta.env.VERCEL_GIT_COMMIT_SHA.trim()
+      : "";
+  const raw = (fromEnv || injected).toLowerCase();
+  if (raw.length < 6 || !/^[0-9a-f]+$/.test(raw)) return null;
+  return raw.slice(0, 6);
+}
+
+/**
  * iOS WebKit (Safari, home-screen PWA, iPadOS “desktop” Safari): window scroll +
  * fixed header path. Excludes Chrome/Firefox/Edge on iOS. Inner overflow scroll for others.
  */
@@ -568,7 +584,7 @@ export default function App() {
   }
 
   const [standalonePwa, setStandalonePwa] = useState(readStandalonePwa);
-  const [githubDeployLabel, setGithubDeployLabel] = useState(null);
+  const [githubDeployLabel, setGithubDeployLabel] = useState(() => shortShaFromThisBuild());
 
   useEffect(() => {
     function checkStandalone() {
@@ -580,19 +596,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const CACHE_KEY = "lotto-honey-github-deploy-label";
-    const TTL_MS = 5 * 60 * 1000;
-    try {
-      const raw = sessionStorage.getItem(CACHE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed.v === "string" && Date.now() - parsed.t < TTL_MS) {
-          setGithubDeployLabel(parsed.v);
-          return;
-        }
-      }
-    } catch {
-      /* ignore */
+    const fromBuild = shortShaFromThisBuild();
+    if (fromBuild) {
+      setGithubDeployLabel(fromBuild);
+      return;
     }
 
     const ac = new AbortController();
@@ -603,52 +610,17 @@ export default function App() {
     };
     const base = `https://api.github.com/repos/${GITHUB_REPO_FULL}`;
 
-    function cacheAndSet(v) {
-      if (cancelled || v == null || v === "") return;
-      try {
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), v }));
-      } catch {
-        /* ignore */
-      }
-      setGithubDeployLabel(v);
-    }
-
     (async () => {
       try {
-        const dRes = await fetch(`${base}/deployments?per_page=1`, { signal: ac.signal, headers });
-        if (dRes.ok) {
-          const deployments = await dRes.json();
-          if (Array.isArray(deployments) && deployments[0]?.id != null) {
-            cacheAndSet(String(deployments[0].id));
-            return;
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      try {
-        const wRes = await fetch(`${base}/actions/runs?per_page=1&branch=main`, {
+        const cRes = await fetch(`${base}/commits/main?per_page=1`, {
           signal: ac.signal,
-          headers
+          headers,
+          cache: "no-store"
         });
-        if (wRes.ok) {
-          const w = await wRes.json();
-          const run = w.workflow_runs?.[0];
-          if (run?.run_number != null) {
-            cacheAndSet(String(run.run_number));
-            return;
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      try {
-        const cRes = await fetch(`${base}/commits/main?per_page=1`, { signal: ac.signal, headers });
-        if (cRes.ok) {
-          const c = await cRes.json();
-          const sha = typeof c.sha === "string" ? c.sha.slice(0, 7) : null;
-          if (sha) cacheAndSet(sha);
-        }
+        if (!cRes.ok || cancelled) return;
+        const c = await cRes.json();
+        const sha = typeof c.sha === "string" ? c.sha.slice(0, 6).toLowerCase() : null;
+        if (sha && /^[0-9a-f]{6}$/.test(sha)) setGithubDeployLabel(sha);
       } catch {
         /* ignore */
       }
@@ -1219,8 +1191,8 @@ export default function App() {
   const hasManualClear = activeNums.size > 0;
   const topDraw = currentRow >= 0 ? ROWS[currentRow] : ROWS[0] ?? null;
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
-  /** Show draw date + jackpot in toolbar only when a row or numbers are “on” (same basis as clear). */
-  const showHeaderDrawInfo = canTurnOff;
+  /** Last draw date + jackpot only while a winning or saved row stays selected (all rows “off” → blank). */
+  const showHeaderDrawInfo = canTurnOff && hasRowLikeSelection;
 
   const rowsScrollBottomPad = showPwaBottomRowNav
     ? `calc(${NAV_H + 20}px + env(safe-area-inset-bottom, 0px))`
@@ -1935,7 +1907,7 @@ export default function App() {
               textTransform: "none",
               color: "rgba(255,255,255,0.38)"
             }}
-            title="GitHub: latest deployment id, workflow run number, or main SHA"
+            title="Commit for this build (set on each Vercel deploy). Locally: latest main from GitHub, no cache."
           >
             {githubDeployLabel}
           </span>

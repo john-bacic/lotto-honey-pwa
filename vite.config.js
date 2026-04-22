@@ -2,7 +2,15 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+/** Baked into the bundle on each Vercel build — source of truth for “this deployment” commit. */
+const vercelGitSha = process.env.VERCEL_GIT_COMMIT_SHA ?? "";
+
 export default defineConfig({
+  /** Expose `VERCEL_GIT_COMMIT_SHA` etc. to `import.meta.env` (Vercel sets these at build). */
+  envPrefix: ["VITE_", "VERCEL_"],
+  define: {
+    __BUILD_GIT_SHA__: JSON.stringify(vercelGitSha)
+  },
   plugins: [
     react(),
     VitePWA({
