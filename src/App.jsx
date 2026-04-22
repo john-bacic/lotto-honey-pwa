@@ -13,6 +13,8 @@ const HONEY_HEX_STROKE_RGBA = "rgba(42,43,49,0.95)";
 const HONEY_HEX_LABEL = "#757575";
 /** Toolbar accent (minus bar, inner hex stroke when row-selected, etc.) */
 const TOOLBAR_ACCENT_PINK = "rgba(255,80,128,0.98)";
+/** Saved rows locked — lock icons (matches ROW_COLORS mint #00ff8c) */
+const SAVED_LOCK_ICON_GREEN = "#00ff8c";
 /** Saved rows when unlocked — same RGB as × / lock accent, lower alpha for fill */
 const SAVED_ROW_UNLOCKED_BG = "rgba(255,80,128,0.18)";
 /** Saved rows when locked — green (same hue as ROW_COLORS mint #00ff8c) */
@@ -385,6 +387,8 @@ export default function App() {
   const [newSavedRowId, setNewSavedRowId] = useState(null);
   const savedRowAnimClearRef = useRef(null);
   const [savedRowsGlow, setSavedRowsGlow] = useState(false);
+  /** Pulse color: mint when transitioning into locked (green rows), rose when unlocking. */
+  const [savedRowsGlowMint, setSavedRowsGlowMint] = useState(true);
   const savedRowsGlowClearRef = useRef(null);
   const [honeycombVisible, setHoneycombVisible] = useState(true);
   /** When honeycomb is hidden: clicking a ball # in rows toggles that # everywhere */
@@ -446,7 +450,9 @@ export default function App() {
   }, []);
 
   function toggleSavedLock() {
-    setSavedLocked((prev) => !prev);
+    const nextLocked = !savedLocked;
+    setSavedRowsGlowMint(nextLocked);
+    setSavedLocked(nextLocked);
     setSavedRowsGlow(true);
     if (savedRowsGlowClearRef.current) clearTimeout(savedRowsGlowClearRef.current);
     savedRowsGlowClearRef.current = setTimeout(() => {
@@ -1761,7 +1767,7 @@ export default function App() {
                   borderRadius: 999,
                   border: "none",
                   background: "transparent",
-                  color: savedLocked ? "rgba(255,255,255,0.55)" : TOOLBAR_ACCENT_PINK,
+                  color: savedLocked ? SAVED_LOCK_ICON_GREEN : TOOLBAR_ACCENT_PINK,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1773,7 +1779,7 @@ export default function App() {
                 }}
                 title={savedLocked ? "Unlock all saved rows" : "Lock all saved rows"}
               >
-                {savedLocked ? <LockIcon locked color={TOOLBAR_ACCENT_PINK} size={12} /> : "×"}
+                {savedLocked ? <LockIcon locked color={SAVED_LOCK_ICON_GREEN} size={12} /> : "×"}
               </button>
             </div>
           )}
@@ -1793,7 +1799,11 @@ export default function App() {
                   key={row.id}
                   className={[
                     newSavedRowId === row.id ? "saved-row--drop-in" : "",
-                    savedRowsGlow ? "saved-row--lock-glow" : ""
+                    savedRowsGlow
+                      ? savedRowsGlowMint
+                        ? "saved-row--lock-glow-mint"
+                        : "saved-row--lock-glow-rose"
+                      : ""
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -1874,20 +1884,23 @@ export default function App() {
                       width: 24,
                       height: 24,
                       borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.03)",
-                      color: "rgba(255,255,255,0.55)",
+                      border: savedLocked
+                        ? "1px solid rgba(255,255,255,0.12)"
+                        : "1px solid rgba(255, 80, 128, 0.35)",
+                      background: savedLocked ? "rgba(255,255,255,0.03)" : "rgba(255, 80, 128, 0.08)",
+                      color: savedLocked ? SAVED_LOCK_ICON_GREEN : TOOLBAR_ACCENT_PINK,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: 14,
+                      fontWeight: 600,
                       lineHeight: 1,
                       cursor: savedLocked ? "not-allowed" : "pointer",
-                      opacity: savedLocked ? 0.8 : 1
+                      opacity: 1
                     }}
                     title={savedLocked ? "All saved rows are locked" : "Delete saved row"}
                   >
-                    {savedLocked ? <LockIcon locked color={TOOLBAR_ACCENT_PINK} /> : "×"}
+                    {savedLocked ? <LockIcon locked color={SAVED_LOCK_ICON_GREEN} /> : "×"}
                   </button>
                 </div>
               );

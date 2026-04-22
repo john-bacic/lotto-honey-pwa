@@ -138,16 +138,32 @@ body {
   }
 }
 
-.saved-row--lock-glow {
-  animation: saved-row-lock-glow 0.42s ease-out both;
+.saved-row--lock-glow-rose {
+  animation: saved-row-lock-glow-rose 0.42s ease-out both;
 }
 
-@keyframes saved-row-lock-glow {
+@keyframes saved-row-lock-glow-rose {
   0% {
     box-shadow: 0 0 0 rgba(255, 255, 255, 0);
   }
   45% {
     box-shadow: 0 0 14px rgba(255, 80, 128, 0.3), 0 0 24px rgba(255, 80, 128, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.saved-row--lock-glow-mint {
+  animation: saved-row-lock-glow-mint 0.42s ease-out both;
+}
+
+@keyframes saved-row-lock-glow-mint {
+  0% {
+    box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+  }
+  45% {
+    box-shadow: 0 0 14px rgba(0, 255, 140, 0.32), 0 0 24px rgba(0, 255, 140, 0.2);
   }
   100% {
     box-shadow: 0 0 0 rgba(255, 255, 255, 0);
