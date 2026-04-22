@@ -1653,42 +1653,39 @@ export default function App() {
                 }}
               >
                 {onionCount > 0 ? (
-                  <>
-                    <OnionGlyphIcon />
-                    <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0, marginLeft: -5 }}>
-                      <svg
-                        width="44"
-                        height="44"
-                        viewBox="0 0 100 100"
-                        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                        aria-hidden="true"
-                      >
-                        <polygon
-                          points="50,2 93,25 93,75 50,98 7,75 7,25"
-                          fill={HONEY_HEX_FACE_RGBA}
-                          stroke="rgba(255,80,128,0.55)"
-                          strokeWidth="4"
-                        />
-                      </svg>
-                      <span
-                        style={{
-                          position: "absolute",
-                          left: "50%",
-                          top: "50%",
-                          transform: "translate(-50%, -50%)",
-                          zIndex: 1,
-                          fontSize: 13,
-                          fontWeight: 700,
-                          fontFamily: "'Outfit', -apple-system, sans-serif",
-                          color: "rgba(255,255,255,0.92)",
-                          pointerEvents: "none",
-                          lineHeight: 1
-                        }}
-                      >
-                        {onionCount}
-                      </span>
-                    </div>
-                  </>
+                  <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+                    <svg
+                      width="44"
+                      height="44"
+                      viewBox="0 0 100 100"
+                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                      aria-hidden="true"
+                    >
+                      <polygon
+                        points="50,2 93,25 93,75 50,98 7,75 7,25"
+                        fill={HONEY_HEX_FACE_RGBA}
+                        stroke="rgba(255,80,128,0.55)"
+                        strokeWidth="4"
+                      />
+                    </svg>
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: "50%",
+                        top: "50%",
+                        transform: "translate(-50%, -50%)",
+                        zIndex: 1,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        fontFamily: "'Outfit', -apple-system, sans-serif",
+                        color: "rgba(255,255,255,0.92)",
+                        pointerEvents: "none",
+                        lineHeight: 1
+                      }}
+                    >
+                      {onionCount}
+                    </span>
+                  </div>
                 ) : (
                   <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
                     <svg
