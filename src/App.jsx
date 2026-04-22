@@ -347,6 +347,12 @@ export default function App() {
   const [saveHeartFilled, setSaveHeartFilled] = useState(false);
   const [saveHeartBurstKey, setSaveHeartBurstKey] = useState(0);
   const saveHeartClearRef = useRef(null);
+  const [justLitNums, setJustLitNums] = useState(() => new Set());
+  const prevLitNumsRef = useRef(new Set());
+  const litAnimStartTimersRef = useRef(new Map());
+  const litAnimEndTimersRef = useRef(new Map());
+  const [selectionRevealNums, setSelectionRevealNums] = useState(() => new Set());
+  const selectionRevealTimersRef = useRef([]);
   const [newSavedRowId, setNewSavedRowId] = useState(null);
   const savedRowAnimClearRef = useRef(null);
   const [savedRowsGlow, setSavedRowsGlow] = useState(false);
@@ -398,6 +404,12 @@ export default function App() {
   useEffect(() => {
     return () => {
       if (saveHeartClearRef.current) clearTimeout(saveHeartClearRef.current);
+      litAnimStartTimersRef.current.forEach((t) => clearTimeout(t));
+      litAnimStartTimersRef.current.clear();
+      litAnimEndTimersRef.current.forEach((t) => clearTimeout(t));
+      litAnimEndTimersRef.current.clear();
+      selectionRevealTimersRef.current.forEach((t) => clearTimeout(t));
+      selectionRevealTimersRef.current = [];
       if (savedRowAnimClearRef.current) clearTimeout(savedRowAnimClearRef.current);
       if (savedRowsGlowClearRef.current) clearTimeout(savedRowsGlowClearRef.current);
     };
@@ -539,6 +551,43 @@ export default function App() {
     return list;
   }, [currentRow, onionCount]);
 
+  useEffect(() => {
+    selectionRevealTimersRef.current.forEach((t) => clearTimeout(t));
+    selectionRevealTimersRef.current = [];
+
+    const hasSelection = currentRow >= 0 || Boolean(selectedSavedId);
+    if (!hasSelection) {
+      setSelectionRevealNums(new Set());
+      return;
+    }
+
+    const nums = new Set();
+    activeRowList.forEach(({ ri }) => {
+      ROWS[ri].nums.forEach((n) => {
+        if (n >= 1 && n <= totalCells) nums.add(n);
+      });
+    });
+    const savedSel = savedRows.find((row) => row.id === selectedSavedId);
+    if (savedSel) {
+      savedSel.nums.forEach((n) => {
+        if (n >= 1 && n <= totalCells) nums.add(n);
+      });
+    }
+    const ordered = Array.from(nums).sort((a, b) => a - b);
+
+    setSelectionRevealNums(new Set());
+    ordered.forEach((n, idx) => {
+      const t = setTimeout(() => {
+        setSelectionRevealNums((prev) => {
+          const next = new Set(prev);
+          next.add(n);
+          return next;
+        });
+      }, idx * 55);
+      selectionRevealTimersRef.current.push(t);
+    });
+  }, [currentRow, selectedSavedId, activeRowList, savedRows, totalCells]);
+
   const numBrightness = useMemo(() => {
     const map = {};
     if (!honeycombVisible) {
@@ -595,6 +644,26 @@ export default function App() {
         }
       });
     }
+
+    const hasSelection = currentRow >= 0 || Boolean(selectedSavedId);
+    if (hasSelection) {
+      const selectionNums = new Set();
+      activeRowList.forEach(({ ri }) => {
+        ROWS[ri].nums.forEach((n) => {
+          if (n >= 1 && n <= totalCells) selectionNums.add(n);
+        });
+      });
+      if (savedSel) {
+        savedSel.nums.forEach((n) => {
+          if (n >= 1 && n <= totalCells) selectionNums.add(n);
+        });
+      }
+      selectionNums.forEach((n) => {
+        const litByManual = activeNums.has(n) || (!honeycombVisible && rowGlobalNums.has(n));
+        if (!selectionRevealNums.has(n) && !litByManual) delete map[n];
+      });
+    }
+
     return map;
   }, [
     honeycombVisible,
@@ -604,8 +673,55 @@ export default function App() {
     onionCount,
     totalCells,
     savedRows,
-    selectedSavedId
+    selectedSavedId,
+    currentRow,
+    selectionRevealNums
   ]);
+
+  useEffect(() => {
+    const currentlyLit = new Set(
+      Object.keys(numBrightness)
+        .map((n) => Number(n))
+        .filter((n) => n >= 1 && n <= totalCells && Boolean(numBrightness[n]))
+    );
+    const newlyLit = [];
+    currentlyLit.forEach((n) => {
+      if (!prevLitNumsRef.current.has(n)) newlyLit.push(n);
+    });
+    if (newlyLit.length > 0) {
+      const staggered = currentRow >= 0 || selectedSavedId !== null;
+      const sortedNewlyLit = newlyLit.sort((a, b) => a - b);
+      sortedNewlyLit.forEach((n, idx) => {
+        const oldStart = litAnimStartTimersRef.current.get(n);
+        if (oldStart) clearTimeout(oldStart);
+        const oldEnd = litAnimEndTimersRef.current.get(n);
+        if (oldEnd) clearTimeout(oldEnd);
+
+        const startDelay = staggered ? idx * 55 : 0;
+        const startTimer = setTimeout(() => {
+          setJustLitNums((prev) => {
+            const next = new Set(prev);
+            next.add(n);
+            return next;
+          });
+          litAnimStartTimersRef.current.delete(n);
+
+          const endTimer = setTimeout(() => {
+            setJustLitNums((prev) => {
+              if (!prev.has(n)) return prev;
+              const next = new Set(prev);
+              next.delete(n);
+              return next;
+            });
+            litAnimEndTimersRef.current.delete(n);
+          }, 420);
+          litAnimEndTimersRef.current.set(n, endTimer);
+        }, startDelay);
+        litAnimStartTimersRef.current.set(n, startTimer);
+      });
+    }
+    prevLitNumsRef.current = currentlyLit;
+  }, [numBrightness, totalCells, currentRow, selectedSavedId]);
 
   const anyActive = Object.keys(numBrightness).length > 0;
   const manualCount = activeNums.size;
@@ -809,8 +925,9 @@ export default function App() {
     shape.closePath();
     const geo = new THREE.ShapeGeometry(shape);
 
-    const innerOuterR = HEX_R - 1.1;
-    const innerInnerR = HEX_R - 3.1;
+    // Use clean concentric radii for a visually even inset ring.
+    const innerOuterR = HEX_R - 1.8;
+    const innerInnerR = HEX_R - 3.2;
     const innerRingShape = new THREE.Shape();
     for (let i = 0; i < 6; i += 1) {
       const a = (Math.PI / 3) * i - Math.PI / 2;
@@ -867,7 +984,9 @@ export default function App() {
         specColor,
         specBorder,
         tgt: 1,
-        cur: 1
+        cur: 1,
+        pulse: 0,
+        pulseTgt: 0
       };
     });
 
@@ -886,9 +1005,12 @@ export default function App() {
       for (let i = 1; i <= tc; i += 1) {
         const m = state.meshes[i];
         m.cur += (m.tgt - m.cur) * 0.14;
-        m.mesh.scale.setScalar(m.cur);
-        m.innerMesh.scale.setScalar(m.cur);
-        m.outMesh.scale.setScalar(m.cur);
+        m.pulse += (m.pulseTgt - m.pulse) * 0.5;
+        const pulseScale = 1 + m.pulse * 0.0;
+        const s = m.cur * pulseScale;
+        m.mesh.scale.setScalar(s);
+        m.innerMesh.scale.setScalar(s);
+        m.outMesh.scale.setScalar(s);
       }
       ren.render(scene, cam);
     }
@@ -931,15 +1053,16 @@ export default function App() {
         const b = info.brightness;
         h.mat.color.copy(new THREE.Color().copy(black).lerp(h.specColor, b));
         h.outMat.color.copy(new THREE.Color().copy(darkBorder).lerp(h.specBorder, b));
-        h.tgt = 0.95 + b * 0.1;
+        h.tgt = 0.95 + b * 0.0;
       } else {
         h.mat.color.set(HEX_FILL);
         h.outMat.color.set(HEX_RING);
         h.tgt = 1;
       }
+      h.pulseTgt = justLitNums.has(n) ? 1 : 0;
       h.innerMat.opacity = activeNums.has(n) ? 1 : 0;
     }
-  }, [numBrightness, totalCells, activeNums]);
+  }, [numBrightness, totalCells, activeNums, justLitNums]);
 
   const savedSelectedIndex = useMemo(() => {
     if (!selectedSavedId) return -1;
