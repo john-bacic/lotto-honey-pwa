@@ -73,6 +73,44 @@ body {
   fill: currentColor;
 }
 
+.save-btn {
+  isolation: isolate;
+}
+
+.save-btn-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%) scale(0.95);
+  border-radius: 999px;
+  background: rgba(255, 80, 128, 0.5);
+  filter: blur(9px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.save-btn--ready .save-btn-glow {
+  animation: save-btn-glow-pulse 1.35s ease-in-out infinite;
+}
+
+@keyframes save-btn-glow-pulse {
+  0% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1.24);
+  }
+  100% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
 /*
  * iOS WebKit: single scroll root on <html>; window scroll + fixed header in App.
  * Toggled from App via classList on <html>.

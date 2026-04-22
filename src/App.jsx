@@ -329,7 +329,7 @@ export default function App() {
   const [savedRows, setSavedRows] = useState([]);
   const [nextSavedNumber, setNextSavedNumber] = useState(1);
   const [savedRowsHydrated, setSavedRowsHydrated] = useState(false);
-  const [savedOpen, setSavedOpen] = useState(true);
+  const [savedOpen, setSavedOpen] = useState(false);
   const [savedLocked, setSavedLocked] = useState(true);
   /** Brief filled heart + CSS burst after a row is actually saved */
   const [saveHeartFilled, setSaveHeartFilled] = useState(false);
@@ -341,10 +341,12 @@ export default function App() {
   const [onionIdx, setOnionIdx] = useState(0);
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
+  const enableRowAutoScrollRef = useRef(false);
   const [labelPos, setLabelPos] = useState([]);
   const rowsRef = useRef(null);
   const scrollRootRef = useRef(null);
   const pinnedHeaderRef = useRef(null);
+  const appRootRef = useRef(null);
 
   const [documentScrollIos] = useState(isIosWebKitDocumentScroll);
   const [iosHeaderSpacerPx, setIosHeaderSpacerPx] = useState(0);
@@ -357,6 +359,25 @@ export default function App() {
       document.documentElement.classList.remove("doc-scroll-ios");
     };
   }, [documentScrollIos]);
+
+  useEffect(() => {
+    function focusScrollSection() {
+      const target = scrollRootRef.current || appRootRef.current;
+      if (!target) return;
+      try {
+        target.focus({ preventScroll: true });
+      } catch {
+        target.focus();
+      }
+    }
+    focusScrollSection();
+    const rafId = requestAnimationFrame(focusScrollSection);
+    window.addEventListener("pageshow", focusScrollSection);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("pageshow", focusScrollSection);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -399,6 +420,19 @@ export default function App() {
       window.removeEventListener("orientationchange", measure);
     };
   }, [documentScrollIos, savedOpen, savedRows.length, currentRow, onionIdx, honeycombVisible]);
+
+  useLayoutEffect(() => {
+    function resetToTop() {
+      if (documentScrollIos) {
+        window.scrollTo(0, 0);
+      } else if (scrollRootRef.current) {
+        scrollRootRef.current.scrollTop = 0;
+      }
+    }
+    resetToTop();
+    const id = requestAnimationFrame(resetToTop);
+    return () => cancelAnimationFrame(id);
+  }, [documentScrollIos]);
 
   const scrollRowIntoViewBelowPinned = useCallback(
     (ri, behavior = "smooth") => {
@@ -604,6 +638,7 @@ export default function App() {
 
   const arrowNav = useCallback(
     (dir, allowLoop = false) => {
+      enableRowAutoScrollRef.current = true;
       if (selectedSavedId != null && savedRows.length > 0) {
         const idx = savedRows.findIndex((r) => r.id === selectedSavedId);
         if (idx !== -1) {
@@ -638,6 +673,9 @@ export default function App() {
 
   useEffect(() => {
     if (currentRow < 0) return;
+    if (!enableRowAutoScrollRef.current) {
+      return;
+    }
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         scrollRowIntoViewBelowPinned(currentRow, "smooth");
@@ -650,18 +688,21 @@ export default function App() {
     function onKeyDown(event) {
       if (event.key === "ArrowDown") {
         event.preventDefault();
+        enableRowAutoScrollRef.current = true;
         arrowNav(1, event.repeat);
       } else if (event.key === "ArrowUp") {
         event.preventDefault();
+        enableRowAutoScrollRef.current = true;
         arrowNav(-1, event.repeat);
       }
     }
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => document.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [arrowNav]);
 
   const tapRow = (ri) => {
+    enableRowAutoScrollRef.current = true;
     setSelectedSavedId(null);
     setCurrentRow((prev) => (prev === ri ? -1 : ri));
   };
@@ -881,7 +922,7 @@ export default function App() {
     activeNums.size > 0 ||
     (!honeycombVisible && rowGlobalNums.size > 0);
   const hasManualClear = activeNums.size > 0;
-  const topDraw = currentRow >= 0 ? ROWS[currentRow] : null;
+  const topDraw = currentRow >= 0 ? ROWS[currentRow] : ROWS[0] ?? null;
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
 
   const rowsScrollBottomPad = standalonePwa
@@ -890,6 +931,8 @@ export default function App() {
 
   return (
     <div
+      ref={appRootRef}
+      tabIndex={-1}
       onContextMenu={(e) => e.preventDefault()}
       style={{
         ...(documentScrollIos
@@ -919,6 +962,7 @@ export default function App() {
     >
       <div
         ref={documentScrollIos ? undefined : scrollRootRef}
+        tabIndex={-1}
         style={
           documentScrollIos
             ? {
@@ -935,7 +979,8 @@ export default function App() {
                 WebkitOverflowScrolling: "touch",
                 overscrollBehaviorY: "contain",
                 display: "flex",
-                flexDirection: "column"
+                flexDirection: "column",
+                outline: "none"
               }
         }
       >
@@ -1074,19 +1119,18 @@ export default function App() {
             </button>
           </div>
 
-          {honeycombVisible && (
-            <div
-              style={{
-                justifySelf: "end",
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                gap: 0,
-                flexShrink: 0,
-                alignSelf: "center",
-                minHeight: 44
-              }}
-            >
+          <div
+            style={{
+              justifySelf: "end",
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              gap: 0,
+              flexShrink: 0,
+              alignSelf: "center",
+              minHeight: 44
+            }}
+          >
               {onionCount > 0 ? (
                 <>
                   <OnionGlyphIcon />
@@ -1165,8 +1209,7 @@ export default function App() {
                   </option>
                 ))}
               </select>
-            </div>
-          )}
+          </div>
         </div>
 
         <div
@@ -1271,6 +1314,7 @@ export default function App() {
                   type="button"
                   onClick={saveManualRow}
                   disabled={manualCount === 0}
+                  className={`save-btn${manualCount > 0 ? " save-btn--ready" : ""}`}
                   aria-label={
                     manualCount > 0
                       ? `Save ${manualCount} numbers to saved rows`
@@ -1295,6 +1339,7 @@ export default function App() {
                     flexShrink: 0
                   }}
                 >
+                  <span className="save-btn-glow" aria-hidden="true" />
                   <svg
                     width="44"
                     height="44"
@@ -1349,7 +1394,7 @@ export default function App() {
                 lineHeight: 1.25
               }}
             >
-              {topDraw ? formatDrawDateJackpot(topDraw.date, topDraw.jackpot) : null}
+              {topDraw ? formatDrawDateJackpot(topDraw.date, topDraw.jackpot) : "Winning Numbers"}
             </div>
             <div
               style={{
@@ -1363,49 +1408,6 @@ export default function App() {
             >
               {honeycombVisible && savedRows.length > 0 && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setSavedOpen((prev) => !prev)}
-                    aria-label={
-                      savedOpen
-                        ? `Collapse saved numbers (${savedRows.length})`
-                        : `Expand saved numbers (${savedRows.length})`
-                    }
-                    title={
-                      savedOpen
-                        ? `Hide saved rows (${savedRows.length})`
-                        : `Show saved rows (${savedRows.length})`
-                    }
-                    style={{
-                      position: "relative",
-                      width: 44,
-                      height: 44,
-                      padding: 0,
-                      border: "none",
-                      background: "transparent",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      flexShrink: 0
-                    }}
-                  >
-                    <svg
-                      width="44"
-                      height="44"
-                      viewBox="0 0 100 100"
-                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                      aria-hidden="true"
-                    >
-                      <polygon
-                        points="50,2 93,25 93,75 50,98 7,75 7,25"
-                        fill={HONEY_HEX_FACE_RGBA}
-                        stroke={HONEY_HEX_STROKE_RGBA}
-                        strokeWidth="4"
-                      />
-                    </svg>
-                    <HexToolbarChevron pointUp={savedOpen} />
-                  </button>
                   {savedOpen && (
                     <button
                       type="button"
@@ -1491,6 +1493,49 @@ export default function App() {
                       )}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setSavedOpen((prev) => !prev)}
+                    aria-label={
+                      savedOpen
+                        ? `Collapse saved numbers (${savedRows.length})`
+                        : `Expand saved numbers (${savedRows.length})`
+                    }
+                    title={
+                      savedOpen
+                        ? `Hide saved rows (${savedRows.length})`
+                        : `Show saved rows (${savedRows.length})`
+                    }
+                    style={{
+                      position: "relative",
+                      width: 44,
+                      height: 44,
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      flexShrink: 0
+                    }}
+                  >
+                    <svg
+                      width="44"
+                      height="44"
+                      viewBox="0 0 100 100"
+                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                      aria-hidden="true"
+                    >
+                      <polygon
+                        points="50,2 93,25 93,75 50,98 7,75 7,25"
+                        fill={HONEY_HEX_FACE_RGBA}
+                        stroke={HONEY_HEX_STROKE_RGBA}
+                        strokeWidth="4"
+                      />
+                    </svg>
+                    <HexToolbarChevron pointUp={savedOpen} />
+                  </button>
                 </>
               )}
             </div>
