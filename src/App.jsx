@@ -15,6 +15,8 @@ const HONEY_HEX_LABEL = "#757575";
 const TOOLBAR_ACCENT_PINK = "rgba(255,80,128,0.98)";
 /** Saved rows locked — lock icons (matches ROW_COLORS mint #00ff8c) */
 const SAVED_LOCK_ICON_GREEN = "#00ff8c";
+/** Onion skin active — toolbar count hex outline (mint, not pink) */
+const ONION_ACTIVE_HEX_STROKE = "rgba(0, 255, 140, 0.55)";
 /** Saved rows when unlocked — same RGB as × / lock accent, lower alpha for fill */
 const SAVED_ROW_UNLOCKED_BG = "rgba(255,80,128,0.18)";
 /** Saved rows when locked — green (same hue as ROW_COLORS mint #00ff8c) */
@@ -1436,7 +1438,7 @@ export default function App() {
                   strokeWidth="4"
                 />
               </svg>
-              <HexToolbarChevron pointUp={honeycombVisible} />
+              <HexToolbarChevron pointUp={honeycombVisible} chevronFill={TOOLBAR_ACCENT_PINK} />
             </button>
           </div>
 
@@ -1664,7 +1666,7 @@ export default function App() {
                       <polygon
                         points="50,2 93,25 93,75 50,98 7,75 7,25"
                         fill={HONEY_HEX_FACE_RGBA}
-                        stroke="rgba(255,80,128,0.55)"
+                        stroke={ONION_ACTIVE_HEX_STROKE}
                         strokeWidth="4"
                       />
                     </svg>
@@ -1678,7 +1680,7 @@ export default function App() {
                         fontSize: 13,
                         fontWeight: 700,
                         fontFamily: "'Outfit', -apple-system, sans-serif",
-                        color: "rgba(255,255,255,0.92)",
+                        color: SAVED_LOCK_ICON_GREEN,
                         pointerEvents: "none",
                         lineHeight: 1
                       }}
