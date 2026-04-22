@@ -920,8 +920,6 @@ export default function App() {
 
   function hideHoneycomb() {
     setHoneycombVisible(false);
-    setCurrentRow(-1);
-    setSelectedSavedId(null);
   }
 
   const buildScene = useCallback((el, gRows, tc) => {
@@ -1133,6 +1131,8 @@ export default function App() {
   const hasManualClear = activeNums.size > 0;
   const topDraw = currentRow >= 0 ? ROWS[currentRow] : ROWS[0] ?? null;
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
+  /** Show draw date + jackpot in toolbar only when a row or numbers are “on” (same basis as clear). */
+  const showHeaderDrawInfo = canTurnOff;
 
   const rowsScrollBottomPad = showPwaBottomRowNav
     ? `calc(${NAV_H + 20}px + env(safe-area-inset-bottom, 0px))`
@@ -1593,11 +1593,13 @@ export default function App() {
                 fontWeight: 500,
                 letterSpacing: 1,
                 textTransform: "none",
-                color: topRowColor,
+                color: showHeaderDrawInfo ? topRowColor : "rgba(255,255,255,0.25)",
                 lineHeight: 1.25
               }}
             >
-              {topDraw ? formatDrawDateJackpot(topDraw.date, topDraw.jackpot) : "Winning Numbers"}
+              {showHeaderDrawInfo && topDraw
+                ? formatDrawDateJackpot(topDraw.date, topDraw.jackpot)
+                : "\u00a0"}
             </div>
             <div
               style={{
