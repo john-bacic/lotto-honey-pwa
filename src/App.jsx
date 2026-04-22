@@ -1352,76 +1352,74 @@ export default function App() {
             }}
           >
             <div style={{ justifySelf: "start", minWidth: 0 }}>
-              {honeycombVisible && (
-                <button
-                  type="button"
-                  onClick={saveManualRow}
-                  disabled={manualCount === 0}
-                  className={`save-btn${manualCount > 0 ? " save-btn--ready" : ""}`}
-                  aria-label={
-                    manualCount > 0
-                      ? `Save ${manualCount} numbers to saved rows`
-                      : "Save (pick up to 7 numbers on the honeycomb first)"
-                  }
-                  title={
-                    manualCount > 0
-                      ? `Save ${manualCount} number${manualCount === 1 ? "" : "s"}`
-                      : "Select numbers on the honeycomb to save"
-                  }
+              <button
+                type="button"
+                onClick={saveManualRow}
+                disabled={manualCount === 0}
+                className={`save-btn${manualCount > 0 ? " save-btn--ready" : ""}`}
+                aria-label={
+                  manualCount > 0
+                    ? `Save ${manualCount} numbers to saved rows`
+                    : "Save (pick up to 7 numbers on the honeycomb first)"
+                }
+                title={
+                  manualCount > 0
+                    ? `Save ${manualCount} number${manualCount === 1 ? "" : "s"}`
+                    : "Select numbers on the honeycomb to save"
+                }
+                style={{
+                  position: "relative",
+                  width: 44,
+                  height: 44,
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: manualCount > 0 ? "pointer" : "not-allowed",
+                  flexShrink: 0
+                }}
+              >
+                <span className="save-btn-glow" aria-hidden="true" />
+                <svg
+                  width="44"
+                  height="44"
+                  viewBox="0 0 100 100"
+                  style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                  aria-hidden="true"
+                >
+                  <polygon
+                    points="50,2 93,25 93,75 50,98 7,75 7,25"
+                    fill={manualCount > 0 ? HONEY_HEX_FACE_RGBA : "rgba(255,255,255,0.05)"}
+                    stroke={HONEY_HEX_STROKE_RGBA}
+                    strokeWidth="4"
+                  />
+                </svg>
+                <span
+                  key={saveHeartBurstKey}
+                  className={`save-heart-wrap${saveHeartFilled ? " save-heart-wrap--burst" : ""}`}
                   style={{
                     position: "relative",
-                    width: 44,
-                    height: 44,
-                    padding: 0,
-                    border: "none",
-                    background: "transparent",
+                    zIndex: 1,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: manualCount > 0 ? "pointer" : "not-allowed",
-                    flexShrink: 0
+                    color: manualCount > 0 ? "rgba(255,80,128,0.98)" : HONEY_HEX_LABEL
                   }}
+                  aria-hidden="true"
                 >
-                  <span className="save-btn-glow" aria-hidden="true" />
                   <svg
-                    width="44"
-                    height="44"
-                    viewBox="0 0 100 100"
-                    style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                    className={`save-heart-svg${saveHeartFilled ? " save-heart-svg--filled" : ""}`}
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
                     aria-hidden="true"
                   >
-                    <polygon
-                      points="50,2 93,25 93,75 50,98 7,75 7,25"
-                      fill={manualCount > 0 ? HONEY_HEX_FACE_RGBA : "rgba(255,255,255,0.05)"}
-                      stroke={HONEY_HEX_STROKE_RGBA}
-                      strokeWidth="4"
-                    />
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                   </svg>
-                  <span
-                    key={saveHeartBurstKey}
-                    className={`save-heart-wrap${saveHeartFilled ? " save-heart-wrap--burst" : ""}`}
-                    style={{
-                      position: "relative",
-                      zIndex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: manualCount > 0 ? "rgba(255,80,128,0.98)" : HONEY_HEX_LABEL
-                    }}
-                    aria-hidden="true"
-                  >
-                    <svg
-                      className={`save-heart-svg${saveHeartFilled ? " save-heart-svg--filled" : ""}`}
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                    </svg>
-                  </span>
-                </button>
-              )}
+                </span>
+              </button>
             </div>
             <div
               style={{
@@ -1449,7 +1447,7 @@ export default function App() {
                 minHeight: 44
               }}
             >
-              {honeycombVisible && savedRows.length > 0 && (
+              {savedRows.length > 0 && (
                 <>
                   {savedOpen && (
                     <button
