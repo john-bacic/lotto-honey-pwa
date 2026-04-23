@@ -163,6 +163,34 @@ function formatDrawDateJackpot(dateStr, jackpot) {
   return `${day}.${month}.${year} ~ $${millions} million`;
 }
 
+/** Local calendar date → DD.MM.YY (matches winning-row toolbar format). */
+function formatDateDdMmYy(d) {
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = String(d.getFullYear()).slice(-2);
+  return `${day}.${month}.${year}`;
+}
+
+/** Lotto Max draws Tue/Fri — next draw date on/after local “today” (stub until scheduled/API). */
+function nextTueOrFriDrawDate(from = new Date()) {
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  for (let i = 0; i < 14; i += 1) {
+    const wd = d.getDay();
+    if (wd === 2 || wd === 5) return new Date(d);
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
+}
+
+/** Placeholder jackpot until per-draw data is wired. */
+const NEXT_DRAW_JACKPOT_PLACEHOLDER = 50_000_000;
+
+function formatNextDrawToolbarLine(from = new Date()) {
+  const next = nextTueOrFriDrawDate(from);
+  const millions = Math.round(NEXT_DRAW_JACKPOT_PLACEHOLDER / 1_000_000);
+  return `next: ${formatDateDdMmYy(next)} ~ $${millions} million\n+2 max`;
+}
+
 const SAVED_ROWS_STORAGE_KEY = "lotto-honey-saved-rows-v1";
 
 function isValidSavedRow(r) {
@@ -1734,15 +1762,21 @@ export default function App() {
                 maxWidth: "100%",
                 fontSize: 14,
                 fontWeight: 500,
-                letterSpacing: 1,
+                letterSpacing: showHeaderDrawDateJackpot ? 1 : 0.35,
                 textTransform: "none",
-                color: showHeaderDrawDateJackpot ? topRowColor : "rgba(255,255,255,0.25)",
-                lineHeight: 1.25
+                color: showHeaderDrawDateJackpot ? topRowColor : SAVED_LOCK_ICON_GREEN,
+                lineHeight: 1.25,
+                whiteSpace: "pre-line"
               }}
+              title={
+                showHeaderDrawDateJackpot
+                  ? undefined
+                  : "Upcoming Tue/Fri draw (placeholder date & jackpot until automated)"
+              }
             >
               {showHeaderDrawDateJackpot && topDraw
                 ? formatDrawDateJackpot(topDraw.date, topDraw.jackpot)
-                : "\u00a0"}
+                : formatNextDrawToolbarLine()}
             </div>
             <div
               style={{
