@@ -1447,7 +1447,8 @@ export default function App() {
           width: "100%",
           background: UI_NAV_BG,
           paddingTop: "env(safe-area-inset-top, 0px)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)"
+          borderBottom: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.28)"
         }}
       >
         <div
