@@ -406,6 +406,7 @@ export default function App() {
   const winningNumbersTitleRef = useRef(null);
   const toolbarClearScrollWinningTitleRef = useRef(false);
   const scrollRootRef = useRef(null);
+  const lastScrollTopPwaNavRef = useRef(-1);
   const pinnedHeaderRef = useRef(null);
   const appRootRef = useRef(null);
 
@@ -637,6 +638,8 @@ export default function App() {
 
   const [standalonePwa, setStandalonePwa] = useState(readStandalonePwa);
   const [githubDeployLabel, setGithubDeployLabel] = useState(() => shortShaFromThisBuild());
+  /** PWA bottom row nav: Gmail-style hide/show from main scroll (see scroll effect). */
+  const [pwaBottomNavHidden, setPwaBottomNavHidden] = useState(false);
 
   useEffect(() => {
     function checkStandalone() {
@@ -1239,6 +1242,75 @@ export default function App() {
   const hasRowLikeSelection = currentRow >= 0 || selectedSavedId !== null;
   /** PWA fixed row nav — only when a winning or saved row is actively selected */
   const showPwaBottomRowNav = standalonePwa && hasRowLikeSelection;
+
+  useEffect(() => {
+    if (!showPwaBottomRowNav) setPwaBottomNavHidden(false);
+  }, [showPwaBottomRowNav]);
+
+  /** PWA: Gmail-style — scroll down the list hides bar; scroll up shows it again. */
+  useEffect(() => {
+    if (!standalonePwa || !showPwaBottomRowNav) return;
+
+    const DELTA = 8;
+    const getScrollTop = () =>
+      documentScrollIos ? window.scrollY || 0 : scrollRootRef.current?.scrollTop ?? 0;
+
+    let rafOuter = 0;
+    let rafPoll = 0;
+    let scrollEl = null;
+
+    const onScroll = () => {
+      cancelAnimationFrame(rafOuter);
+      rafOuter = requestAnimationFrame(() => {
+        const st = getScrollTop();
+        if (lastScrollTopPwaNavRef.current < 0) {
+          lastScrollTopPwaNavRef.current = st;
+          return;
+        }
+        const dy = st - lastScrollTopPwaNavRef.current;
+        lastScrollTopPwaNavRef.current = st;
+        if (st <= 1) {
+          setPwaBottomNavHidden(false);
+        } else if (dy > DELTA) {
+          setPwaBottomNavHidden(true);
+        } else if (dy < -DELTA) {
+          setPwaBottomNavHidden(false);
+        }
+      });
+    };
+
+    lastScrollTopPwaNavRef.current = -1;
+
+    if (documentScrollIos) {
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+      return () => {
+        cancelAnimationFrame(rafOuter);
+        window.removeEventListener("scroll", onScroll);
+        lastScrollTopPwaNavRef.current = -1;
+      };
+    }
+
+    const tryAttach = () => {
+      const el = scrollRootRef.current;
+      if (!el) {
+        rafPoll = requestAnimationFrame(tryAttach);
+        return;
+      }
+      scrollEl = el;
+      el.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+    };
+    rafPoll = requestAnimationFrame(tryAttach);
+
+    return () => {
+      cancelAnimationFrame(rafOuter);
+      cancelAnimationFrame(rafPoll);
+      scrollEl?.removeEventListener("scroll", onScroll);
+      lastScrollTopPwaNavRef.current = -1;
+    };
+  }, [standalonePwa, showPwaBottomRowNav, documentScrollIos]);
+
   const canTurnOff =
     currentRow >= 0 ||
     selectedSavedId !== null ||
@@ -1250,11 +1322,12 @@ export default function App() {
   /** Date + jackpot in toolbar only when a winning row is selected (saved-only → blank). */
   const showHeaderDrawDateJackpot = canTurnOff && hasRowLikeSelection && currentRow >= 0;
 
-  const rowsScrollBottomPad = showPwaBottomRowNav
-    ? `calc(${NAV_H + 20}px + env(safe-area-inset-bottom, 0px))`
-    : standalonePwa
-      ? `calc(20px + env(safe-area-inset-bottom, 0px))`
-      : "20px";
+  const rowsScrollBottomPad =
+    showPwaBottomRowNav && !pwaBottomNavHidden
+      ? `calc(${NAV_H + 20}px + env(safe-area-inset-bottom, 0px))`
+      : standalonePwa
+        ? `calc(20px + env(safe-area-inset-bottom, 0px))`
+        : "20px";
 
   return (
     <div
@@ -2142,7 +2215,11 @@ export default function App() {
               background: UI_NAV_BG,
               borderTop: "1px solid rgba(255,255,255,0.1)",
               backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)"
+              WebkitBackdropFilter: "blur(12px)",
+              transform: pwaBottomNavHidden ? "translateY(100%)" : "translateY(0)",
+              transition: "transform 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
+              pointerEvents: pwaBottomNavHidden ? "none" : "auto",
+              willChange: "transform"
             }}
           >
             <div
