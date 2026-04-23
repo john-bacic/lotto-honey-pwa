@@ -1923,7 +1923,10 @@ export default function App() {
                       strokeWidth="4"
                     />
                   </svg>
-                  <HexToolbarChevron pointUp={savedOpen} chevronFill={TOOLBAR_ACCENT_PINK} />
+                  <HexToolbarChevron
+                    pointUp={savedOpen}
+                    chevronFill={savedOpen ? SAVED_LOCK_ICON_GREEN : TOOLBAR_ACCENT_PINK}
+                  />
                 </button>
               ) : null}
             </div>
