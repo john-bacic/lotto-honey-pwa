@@ -407,6 +407,9 @@ export default function App() {
   const toolbarClearScrollWinningTitleRef = useRef(false);
   const scrollRootRef = useRef(null);
   const lastScrollTopPwaNavRef = useRef(-1);
+  /** While true, PWA bottom nav ignores scroll deltas (chevron row navigation scroll). */
+  const pwaNavScrollFromChevronSuppressRef = useRef(false);
+  const pwaNavChevronSuppressClearTimerRef = useRef(null);
   const pinnedHeaderRef = useRef(null);
   const appRootRef = useRef(null);
 
@@ -990,6 +993,22 @@ export default function App() {
     [selectedSavedId, savedRows]
   );
 
+  const bottomNavArrowNav = useCallback(
+    (dir, allowLoop) => {
+      pwaNavScrollFromChevronSuppressRef.current = true;
+      if (pwaNavChevronSuppressClearTimerRef.current != null) {
+        clearTimeout(pwaNavChevronSuppressClearTimerRef.current);
+      }
+      pwaNavChevronSuppressClearTimerRef.current = window.setTimeout(() => {
+        pwaNavChevronSuppressClearTimerRef.current = null;
+        pwaNavScrollFromChevronSuppressRef.current = false;
+        lastScrollTopPwaNavRef.current = -1;
+      }, 550);
+      arrowNav(dir, allowLoop);
+    },
+    [arrowNav]
+  );
+
   useEffect(() => {
     if (currentRow < 0) return;
     if (!enableRowAutoScrollRef.current) {
@@ -1244,7 +1263,14 @@ export default function App() {
   const showPwaBottomRowNav = standalonePwa && hasRowLikeSelection;
 
   useEffect(() => {
-    if (!showPwaBottomRowNav) setPwaBottomNavHidden(false);
+    if (!showPwaBottomRowNav) {
+      setPwaBottomNavHidden(false);
+      pwaNavScrollFromChevronSuppressRef.current = false;
+      if (pwaNavChevronSuppressClearTimerRef.current != null) {
+        clearTimeout(pwaNavChevronSuppressClearTimerRef.current);
+        pwaNavChevronSuppressClearTimerRef.current = null;
+      }
+    }
   }, [showPwaBottomRowNav]);
 
   /** PWA: Gmail-style — scroll down the list hides bar; scroll up shows it again. */
@@ -1263,6 +1289,10 @@ export default function App() {
       cancelAnimationFrame(rafOuter);
       rafOuter = requestAnimationFrame(() => {
         const st = getScrollTop();
+        if (pwaNavScrollFromChevronSuppressRef.current) {
+          lastScrollTopPwaNavRef.current = st;
+          return;
+        }
         if (lastScrollTopPwaNavRef.current < 0) {
           lastScrollTopPwaNavRef.current = st;
           return;
@@ -1288,6 +1318,10 @@ export default function App() {
         cancelAnimationFrame(rafOuter);
         window.removeEventListener("scroll", onScroll);
         lastScrollTopPwaNavRef.current = -1;
+        if (pwaNavChevronSuppressClearTimerRef.current != null) {
+          clearTimeout(pwaNavChevronSuppressClearTimerRef.current);
+          pwaNavChevronSuppressClearTimerRef.current = null;
+        }
       };
     }
 
@@ -1308,6 +1342,10 @@ export default function App() {
       cancelAnimationFrame(rafPoll);
       scrollEl?.removeEventListener("scroll", onScroll);
       lastScrollTopPwaNavRef.current = -1;
+      if (pwaNavChevronSuppressClearTimerRef.current != null) {
+        clearTimeout(pwaNavChevronSuppressClearTimerRef.current);
+        pwaNavChevronSuppressClearTimerRef.current = null;
+      }
     };
   }, [standalonePwa, showPwaBottomRowNav, documentScrollIos]);
 
@@ -2233,7 +2271,7 @@ export default function App() {
                 paddingBottom: 6
               }}
             >
-              <NavButton dir={-1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atTopBoundary} />
+              <NavButton dir={-1} arrowColor={arrowColor} onNav={bottomNavArrowNav} dimmed={atTopBoundary} />
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 60, justifyContent: "center" }}>
                 {savedSelectedIndex >= 0 ? (
                   <>
@@ -2277,7 +2315,7 @@ export default function App() {
                   <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>-</span>
                 )}
               </div>
-              <NavButton dir={1} arrowColor={arrowColor} onNav={arrowNav} dimmed={atBottomBoundary} />
+              <NavButton dir={1} arrowColor={arrowColor} onNav={bottomNavArrowNav} dimmed={atBottomBoundary} />
             </div>
           </div>
       )}
