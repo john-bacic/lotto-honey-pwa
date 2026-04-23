@@ -1956,7 +1956,7 @@ export default function App() {
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 4,
-                padding: "8px 8px 4px 14px"
+                paddingRight: 24
               }}
             >
               <span style={{ lineHeight: 1 }}>Saved</span>
@@ -1966,7 +1966,6 @@ export default function App() {
                 style={{
                   width: 24,
                   height: 24,
-                  marginRight: 3,
                   borderRadius: 999,
                   border: "none",
                   background: "transparent",
@@ -2015,7 +2014,7 @@ export default function App() {
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
-                    padding: "7px 8px",
+                    padding: "7px 22px 7px 14px",
                     marginBottom: 4,
                     background: savedRowBg,
                     border: `2px solid ${isCurrent ? color : "rgba(255,255,255,0.06)"}`,
