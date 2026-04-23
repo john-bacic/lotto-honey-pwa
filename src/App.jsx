@@ -946,6 +946,7 @@ export default function App() {
   }
 
   function clearAll() {
+    setOnionIdx(0);
     if (currentRow >= 0 || selectedSavedId) {
       if (currentRow >= 0) {
         toolbarClearScrollWinningTitleRef.current = true;
