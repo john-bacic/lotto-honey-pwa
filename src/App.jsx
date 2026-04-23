@@ -2270,7 +2270,7 @@ export default function App() {
                   flexShrink: 0,
                   width: 24,
                   textAlign: "right",
-                  paddingRight: 6
+                  paddingRight: 29
                 }}
                 title={d === "t" ? "Tuesday draw" : d === "f" ? "Friday draw" : undefined}
               >
