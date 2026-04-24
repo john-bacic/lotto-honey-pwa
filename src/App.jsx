@@ -1090,6 +1090,16 @@ export default function App() {
     setHoneycombVisible(false);
   }
 
+  function handleOnionLevelChange(e) {
+    const nextOnionIdx = Number(e.target.value);
+    setOnionIdx(nextOnionIdx);
+    if (nextOnionIdx > 0) {
+      enableRowAutoScrollRef.current = true;
+      setSelectedSavedId(null);
+      setCurrentRow(0);
+    }
+  }
+
   const buildScene = useCallback((el, gRows, tc) => {
     if (sceneRef.current) {
       cancelAnimationFrame(sceneRef.current.raf);
@@ -1861,7 +1871,7 @@ export default function App() {
                 <select
                   aria-label="Onion skin level"
                   value={onionIdx}
-                  onChange={(e) => setOnionIdx(Number(e.target.value))}
+                  onChange={handleOnionLevelChange}
                   style={{
                     position: "absolute",
                     inset: 0,
