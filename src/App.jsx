@@ -17,7 +17,8 @@ const TOOLBAR_ACCENT_PINK = "rgba(255,80,128,0.98)";
 const SAVED_LOCK_ICON_GREEN = "#00ff8c";
 /** Onion skin active — toolbar count hex outline (mint, not pink) */
 const ONION_ACTIVE_HEX_STROKE = "rgba(0, 255, 140, 0.55)";
-const FREQUENCY_ACTIVE_HEX_STROKE = "rgba(120,100,230,0.9)";
+/** Light purple — frequency `Nx:` column + active toolbar frequency hex stroke and label. */
+const FREQUENCY_LIGHT_PURPLE = "rgba(170,150,255,0.9)";
 /** Saved rows when unlocked — same RGB as × / lock accent, lower alpha for fill */
 const SAVED_ROW_UNLOCKED_BG = "rgba(255,80,128,0.18)";
 /** Saved rows when locked — green (same hue as ROW_COLORS mint #00ff8c) */
@@ -1930,7 +1931,7 @@ export default function App() {
                         <polygon
                           points="50,2 93,25 93,75 50,98 7,75 7,25"
                           fill={HONEY_HEX_FACE_RGBA}
-                          stroke={FREQUENCY_ACTIVE_HEX_STROKE}
+                          stroke={FREQUENCY_LIGHT_PURPLE}
                           strokeWidth="4"
                         />
                       </svg>
@@ -1947,7 +1948,7 @@ export default function App() {
                           fontFamily: "'Outfit', -apple-system, sans-serif",
                           letterSpacing: "-0.03em",
                           textAlign: "center",
-                          color: "rgba(120,100,230,0.9)",
+                          color: FREQUENCY_LIGHT_PURPLE,
                           pointerEvents: "none",
                           lineHeight: 1
                         }}
@@ -2217,7 +2218,7 @@ export default function App() {
                     fontSize: 13,
                     fontWeight: 400,
                     letterSpacing: "-0.01em",
-                    color: "rgba(170,150,255,0.9)",
+                    color: FREQUENCY_LIGHT_PURPLE,
                     lineHeight: 1,
                     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
                   }}
