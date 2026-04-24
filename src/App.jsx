@@ -2208,7 +2208,16 @@ export default function App() {
           >
             <span>Number Frequency</span>
           </div>
-          <div style={{ flexShrink: 0, padding: `${SECTION_LIST_ROWS_PADDING_TOP + 4}px 14px 6px` }}>
+          <div
+            style={{
+              flexShrink: 0,
+              paddingTop: SECTION_LIST_ROWS_PADDING_TOP + 4,
+              paddingRight: 14,
+              paddingBottom: 6,
+              paddingLeft: 0,
+              marginLeft: -6
+            }}
+          >
             {frequencyGroups.groups.map(({ count, nums }) => (
               <div
                 key={`freq-${count}`}
@@ -2221,17 +2230,19 @@ export default function App() {
               >
                 <div
                   style={{
-                    width: 32,
+                    width: 52,
                     height: 24,
                     flexShrink: 0,
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: "flex-end",
                     fontSize: 13,
                     fontWeight: 400,
                     letterSpacing: "-0.01em",
                     color: FREQUENCY_LIGHT_PURPLE,
                     lineHeight: 1,
-                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
+                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
+                    fontVariantNumeric: "tabular-nums"
                   }}
                 >
                   {count}x:
