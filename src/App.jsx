@@ -207,10 +207,14 @@ function nextTueOrFriDrawDate(from = new Date()) {
 /** Placeholder jackpot until per-draw data is wired. */
 const NEXT_DRAW_JACKPOT_PLACEHOLDER = 50_000_000;
 
-function formatNextDrawToolbarLine(from = new Date()) {
+/** Two lines for toolbar “next draw” block; second line is shorter and right-aligned under “million”. */
+function nextDrawToolbarLines(from = new Date()) {
   const next = nextTueOrFriDrawDate(from);
   const millions = Math.round(NEXT_DRAW_JACKPOT_PLACEHOLDER / 1_000_000);
-  return `next: ${formatDateDdMmYy(next)} ~ $${millions} million\n+2 max`;
+  return {
+    dateAndJackpot: `next: ${formatDateDdMmYy(next)} ~ $${millions} million`,
+    extras: "+2 max"
+  };
 }
 
 const SAVED_ROWS_STORAGE_KEY = "lotto-honey-saved-rows-v1";
@@ -1541,6 +1545,7 @@ export default function App() {
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
   /** Date + jackpot in toolbar only when a winning row is selected (saved-only → blank). */
   const showHeaderDrawDateJackpot = canTurnOff && hasRowLikeSelection && currentRow >= 0;
+  const nextDrawToolbarPlaceholderLines = nextDrawToolbarLines();
 
   const rowsScrollBottomPad =
     showPwaBottomRowNav && !pwaBottomNavHidden
@@ -2015,7 +2020,9 @@ export default function App() {
             <div
               style={{
                 justifySelf: "center",
-                textAlign: "center",
+                textAlign: showHeaderDrawDateJackpot && topDraw ? "center" : undefined,
+                display: showHeaderDrawDateJackpot && topDraw ? undefined : "flex",
+                justifyContent: showHeaderDrawDateJackpot && topDraw ? undefined : "center",
                 minWidth: 0,
                 maxWidth: "100%",
                 fontSize: 14,
@@ -2024,7 +2031,7 @@ export default function App() {
                 textTransform: "none",
                 color: showHeaderDrawDateJackpot ? topRowColor : SAVED_LOCK_ICON_GREEN,
                 lineHeight: 1.25,
-                whiteSpace: "pre-line",
+                whiteSpace: showHeaderDrawDateJackpot && topDraw ? undefined : "normal",
                 textShadow: ROW_NUM_TEXT_SHADOW_IDLE
               }}
               title={
@@ -2033,9 +2040,14 @@ export default function App() {
                   : "Upcoming Tue/Fri draw (placeholder date & jackpot until automated)"
               }
             >
-              {showHeaderDrawDateJackpot && topDraw
-                ? formatDrawDateJackpot(topDraw.date, topDraw.jackpot)
-                : formatNextDrawToolbarLine()}
+              {showHeaderDrawDateJackpot && topDraw ? (
+                formatDrawDateJackpot(topDraw.date, topDraw.jackpot)
+              ) : (
+                <div style={{ textAlign: "right" }}>
+                  <div>{nextDrawToolbarPlaceholderLines.dateAndJackpot}</div>
+                  <div>{nextDrawToolbarPlaceholderLines.extras}</div>
+                </div>
+              )}
             </div>
             <div
               style={{
