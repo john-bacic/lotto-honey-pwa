@@ -518,6 +518,11 @@ export default function App() {
     setNextSavedNumber((prev) => (prev < floor ? floor : prev));
   }, [savedRows, savedRowsHydrated]);
 
+  useEffect(() => {
+    if (!savedOpen) return;
+    setSavedLocked(true);
+  }, [savedOpen]);
+
   useLayoutEffect(() => {
     if (!documentScrollIos) return undefined;
     const el = pinnedHeaderRef.current;
@@ -1697,111 +1702,6 @@ export default function App() {
             }}
           >
             <div style={{ justifySelf: "start", minWidth: 0 }}>
-              {manualCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={saveManualRow}
-                  className="save-btn save-btn--ready"
-                  aria-label={`Save ${manualCount} numbers to saved rows`}
-                  title={`Save ${manualCount} number${manualCount === 1 ? "" : "s"}`}
-                  style={{
-                    position: "relative",
-                    width: 44,
-                    height: 44,
-                    padding: 0,
-                    border: "none",
-                    background: "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    flexShrink: 0
-                  }}
-                >
-                  <span className="save-btn-glow" aria-hidden="true" />
-                  <svg
-                    width="44"
-                    height="44"
-                    viewBox="0 0 100 100"
-                    style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                    aria-hidden="true"
-                  >
-                    <polygon
-                      points="50,2 93,25 93,75 50,98 7,75 7,25"
-                      fill={HONEY_HEX_FACE_RGBA}
-                      stroke={HONEY_HEX_STROKE_RGBA}
-                      strokeWidth="4"
-                    />
-                  </svg>
-                  <span
-                    key={saveHeartBurstKey}
-                    className={`save-heart-wrap${saveHeartFilled ? " save-heart-wrap--burst" : ""}`}
-                    style={{
-                      position: "relative",
-                      zIndex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "rgba(255,80,128,0.98)"
-                    }}
-                    aria-hidden="true"
-                  >
-                    <svg
-                      className={`save-heart-svg${saveHeartFilled ? " save-heart-svg--filled" : ""}`}
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                    </svg>
-                  </span>
-                </button>
-              ) : (
-                <div
-                  aria-hidden
-                  style={{ width: 44, height: 44, flexShrink: 0, pointerEvents: "none" }}
-                />
-              )}
-            </div>
-            <div
-              style={{
-                justifySelf: "center",
-                textAlign: "center",
-                minWidth: 0,
-                maxWidth: "100%",
-                fontSize: 14,
-                fontWeight: 500,
-                letterSpacing: showHeaderDrawDateJackpot ? 1 : 0.35,
-                textTransform: "none",
-                color: showHeaderDrawDateJackpot ? topRowColor : SAVED_LOCK_ICON_GREEN,
-                lineHeight: 1.25,
-                whiteSpace: "pre-line"
-              }}
-              title={
-                showHeaderDrawDateJackpot
-                  ? undefined
-                  : "Upcoming Tue/Fri draw (placeholder date & jackpot until automated)"
-              }
-            >
-              {showHeaderDrawDateJackpot && topDraw
-                ? formatDrawDateJackpot(topDraw.date, topDraw.jackpot)
-                : formatNextDrawToolbarLine()}
-            </div>
-            <div
-              style={{
-                justifySelf: "end",
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                gap: 6,
-                flexShrink: 0,
-                minHeight: 44,
-                /** Honeycomb hidden: shift up by one toolbar hex (same size as show/hide honeycomb). */
-                marginTop: honeycombVisible ? 0 : -44
-              }}
-            >
               <div
                 style={{
                   position: "relative",
@@ -1890,6 +1790,123 @@ export default function App() {
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+            <div
+              style={{
+                justifySelf: "center",
+                textAlign: "center",
+                minWidth: 0,
+                maxWidth: "100%",
+                fontSize: 14,
+                fontWeight: 500,
+                letterSpacing: showHeaderDrawDateJackpot ? 1 : 0.35,
+                textTransform: "none",
+                color: showHeaderDrawDateJackpot ? topRowColor : SAVED_LOCK_ICON_GREEN,
+                lineHeight: 1.25,
+                whiteSpace: "pre-line"
+              }}
+              title={
+                showHeaderDrawDateJackpot
+                  ? undefined
+                  : "Upcoming Tue/Fri draw (placeholder date & jackpot until automated)"
+              }
+            >
+              {showHeaderDrawDateJackpot && topDraw
+                ? formatDrawDateJackpot(topDraw.date, topDraw.jackpot)
+                : formatNextDrawToolbarLine()}
+            </div>
+            <div
+              style={{
+                justifySelf: "end",
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: 6,
+                flexShrink: 0,
+                minHeight: 44,
+                /** Honeycomb hidden: shift up by one toolbar hex (same size as show/hide honeycomb). */
+                marginTop: honeycombVisible ? 0 : -44
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0,
+                  flexShrink: 0,
+                  minHeight: 44
+                }}
+              >
+                {manualCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={saveManualRow}
+                    className="save-btn save-btn--ready"
+                    aria-label={`Save ${manualCount} numbers to saved rows`}
+                    title={`Save ${manualCount} number${manualCount === 1 ? "" : "s"}`}
+                    style={{
+                      position: "relative",
+                      width: 44,
+                      height: 44,
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      flexShrink: 0
+                    }}
+                  >
+                    <span className="save-btn-glow" aria-hidden="true" />
+                    <svg
+                      width="44"
+                      height="44"
+                      viewBox="0 0 100 100"
+                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                      aria-hidden="true"
+                    >
+                      <polygon
+                        points="50,2 93,25 93,75 50,98 7,75 7,25"
+                        fill={HONEY_HEX_FACE_RGBA}
+                        stroke={HONEY_HEX_STROKE_RGBA}
+                        strokeWidth="4"
+                      />
+                    </svg>
+                    <span
+                      key={saveHeartBurstKey}
+                      className={`save-heart-wrap${saveHeartFilled ? " save-heart-wrap--burst" : ""}`}
+                      style={{
+                        position: "relative",
+                        zIndex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "rgba(255,80,128,0.98)"
+                      }}
+                      aria-hidden="true"
+                    >
+                      <svg
+                        className={`save-heart-svg${saveHeartFilled ? " save-heart-svg--filled" : ""}`}
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                      </svg>
+                    </span>
+                  </button>
+                ) : null}
+                {!manualCount ? (
+                  <div
+                    aria-hidden
+                    style={{ width: 44, height: 44, flexShrink: 0, pointerEvents: "none" }}
+                  />
+                ) : null}
               </div>
               {savedRows.length > 0 ? (
                 <button
