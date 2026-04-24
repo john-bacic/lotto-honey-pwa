@@ -952,6 +952,9 @@ export default function App() {
     activeNums.forEach((n) => {
       if (n <= totalCells) map[n] = { brightness: 1 };
     });
+    rowGlobalNums.forEach((n) => {
+      if (n >= 1 && n <= totalCells) map[n] = { brightness: 1 };
+    });
     activeRowList.forEach(({ ri, depth }) => {
       const b = onionInnerBrightnessForDepth(depth, onionCount);
       ROWS[ri].nums.forEach((n) => {
@@ -983,7 +986,7 @@ export default function App() {
         });
       }
       selectionNums.forEach((n) => {
-        const litByManual = activeNums.has(n) || (!honeycombVisible && rowGlobalNums.has(n));
+        const litByManual = activeNums.has(n) || rowGlobalNums.has(n);
         if (!selectionRevealNums.has(n) && !litByManual) delete map[n];
       });
     }
@@ -1209,7 +1212,7 @@ export default function App() {
   };
 
   function toggleRowGlobalNum(e, n) {
-    if (honeycombVisible || n < 1 || n > totalCells) return;
+    if (n < 1 || n > totalCells) return;
     e.stopPropagation();
     setRowGlobalNums((prev) => {
       const next = new Set(prev);
@@ -1415,9 +1418,9 @@ export default function App() {
         h.tgt = 1;
       }
       h.pulseTgt = justLitNums.has(n) ? 1 : 0;
-      h.innerMat.opacity = activeNums.has(n) ? 1 : 0;
+      h.innerMat.opacity = activeNums.has(n) || rowGlobalNums.has(n) ? 1 : 0;
     }
-  }, [numBrightness, totalCells, activeNums, justLitNums]);
+  }, [numBrightness, totalCells, activeNums, rowGlobalNums, justLitNums]);
 
   const savedSelectedIndex = useMemo(() => {
     if (!selectedSavedId) return -1;
@@ -1531,7 +1534,7 @@ export default function App() {
     currentRow >= 0 ||
     selectedSavedId !== null ||
     activeNums.size > 0 ||
-    (!honeycombVisible && rowGlobalNums.size > 0) ||
+    rowGlobalNums.size > 0 ||
     frequencyIdx > 0;
   const hasManualClear = activeNums.size > 0;
   const topDraw = currentRow >= 0 ? ROWS[currentRow] : ROWS[0] ?? null;
@@ -2246,8 +2249,13 @@ export default function App() {
                   {nums.map((n, idx) => {
                     const nColor = spectrumHexForNum(n, frequencyGroups.maxNumInWindow);
                     const isZero = count === 0;
-                    const isLitInCurrentSelection = Boolean(numBrightness[n]);
-                    const showChip = !isZero && isLitInCurrentSelection;
+                    const litByManualToggle =
+                      n >= 1 &&
+                      n <= totalCells &&
+                      (activeNums.has(n) || rowGlobalNums.has(n));
+                    const litForChip = Boolean(numBrightness[n]) || litByManualToggle;
+                    /** Chips for row/onion selection; also honeycomb picks and row-ball toggles (incl. 0x). */
+                    const showChip = litForChip && (!isZero || litByManualToggle);
                     const onionChipBrightness = numBrightness[n]?.brightness ?? 1;
                     const chipFillAlpha =
                       showChip && onionCount > 0 ? 0.15 + onionChipBrightness * 0.85 : showChip ? 0.9 : 0;
@@ -2289,7 +2297,7 @@ export default function App() {
                             fontSize: 13,
                             fontWeight: 400,
                             letterSpacing: "-0.01em",
-                            color: isZero ? TOOLBAR_ACCENT_PINK : showChip ? "#000000" : "rgba(120,100,230,0.9)",
+                            color: showChip ? "#000000" : isZero ? TOOLBAR_ACCENT_PINK : "rgba(120,100,230,0.9)",
                             background: showChip ? themeRgba(nColor, chipFillAlpha) : "transparent",
                             lineHeight: 1,
                             fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
@@ -2599,7 +2607,7 @@ export default function App() {
                           background: numOn ? themeRgba(th, 0.15 + b * 0.85) : UI_NUM_CELL_IDLE,
                           textShadow: numOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
                           transition: "all 0.25s",
-                          cursor: honeycombVisible ? "inherit" : "pointer"
+                          cursor: "pointer"
                         }}
                       >
                         {n}
@@ -2608,6 +2616,8 @@ export default function App() {
                   })}
                   {(() => {
                     const bonusOn = row.bonus >= 1 && row.bonus <= totalCells && Boolean(numBrightness[row.bonus]);
+                    const thBonus = spectrumHexForNum(row.bonus, totalCells);
+                    const bBonus = numBrightness[row.bonus]?.brightness || 0;
                     return (
                       <div
                         role="presentation"
@@ -2621,12 +2631,16 @@ export default function App() {
                           justifyContent: "center",
                           fontSize: 14,
                           fontWeight: 600,
-                          color: isCurrent ? "rgba(255,255,255,0.4)" : bonusOn ? BONUS_DASH_RGBA : "rgba(255,255,255,0.175)",
-                          background: isCurrent ? "rgba(19,20,24,0.0)" : UI_NUM_CELL_IDLE,
+                          color: bonusOn ? LIT_NUM_COLOR : isCurrent ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.175)",
+                          background: bonusOn
+                            ? themeRgba(thBonus, 0.15 + bBonus * 0.85)
+                            : isCurrent
+                              ? "rgba(19,20,24,0.0)"
+                              : UI_NUM_CELL_IDLE,
                           border: `1px dashed ${BONUS_DASH_RGBA}`,
-                          textShadow: "none",
+                          textShadow: bonusOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
                           transition: "all 0.25s",
-                          cursor: honeycombVisible ? "inherit" : "pointer"
+                          cursor: "pointer"
                         }}
                         title="Bonus number"
                       >
