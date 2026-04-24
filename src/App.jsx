@@ -2224,7 +2224,7 @@ export default function App() {
                 style={{
                   display: "flex",
                   alignItems: "flex-start",
-                  gap: 1,
+                  gap: 6,
                   marginBottom: 6
                 }}
               >
