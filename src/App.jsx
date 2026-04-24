@@ -720,6 +720,8 @@ export default function App() {
 
   useLayoutEffect(() => {
     if (!savedOpen || savedRows.length === 0) return;
+    /** Number Frequency is above Saved — avoid scrolling down to Saved and pushing Frequency off-screen. */
+    if (frequencyIdx > 0) return;
     let cancelled = false;
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -730,18 +732,22 @@ export default function App() {
       cancelled = true;
       cancelAnimationFrame(id);
     };
-  }, [savedOpen, savedRows.length, scrollSavedSectionIntoView]);
+  }, [savedOpen, savedRows.length, frequencyIdx, scrollSavedSectionIntoView]);
 
   /** After toolbar minus: winning row off, or all lit/global numbers cleared (see clearAll). */
   useLayoutEffect(() => {
     if (!toolbarClearScrollWinningTitleRef.current) return;
+    if (frequencyIdx > 0) {
+      toolbarClearScrollWinningTitleRef.current = false;
+      return;
+    }
     toolbarClearScrollWinningTitleRef.current = false;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         scrollWinningNumbersTitleIntoView("smooth");
       });
     });
-  }, [currentRow, selectedSavedId, activeNums, rowGlobalNums, scrollWinningNumbersTitleIntoView]);
+  }, [currentRow, selectedSavedId, activeNums, rowGlobalNums, frequencyIdx, scrollWinningNumbersTitleIntoView]);
 
   function readStandalonePwa() {
     if (typeof window === "undefined") return false;
@@ -1097,16 +1103,18 @@ export default function App() {
 
   function clearAll() {
     setOnionIdx(0);
-    setFrequencyIdx(0);
+    const scrollWinningTitleAfterClear = frequencyIdx <= 0;
     if (currentRow >= 0 || selectedSavedId) {
-      if (currentRow >= 0) {
+      if (currentRow >= 0 && scrollWinningTitleAfterClear) {
         toolbarClearScrollWinningTitleRef.current = true;
       }
       setCurrentRow(-1);
       setSelectedSavedId(null);
       return;
     }
-    toolbarClearScrollWinningTitleRef.current = true;
+    if (scrollWinningTitleAfterClear) {
+      toolbarClearScrollWinningTitleRef.current = true;
+    }
     setActiveNums(new Set());
     setRowGlobalNums(new Set());
   }
