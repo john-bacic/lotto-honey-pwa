@@ -829,7 +829,7 @@ export default function App() {
       ? null
       : frequencyIdx <= FREQUENCY_LEVELS.length
         ? `${FREQUENCY_LEVELS[frequencyIdx - 1]}d`
-        : `${oldestDrawCount}d`;
+        : String(oldestDrawCount);
   const frequencyGroups = useMemo(() => {
     if (selectedFrequencyWindow <= 0) return null;
     const windowRows = ROWS.slice(0, Math.min(selectedFrequencyWindow, ROWS.length));
