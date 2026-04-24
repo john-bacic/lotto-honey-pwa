@@ -17,6 +17,7 @@ const TOOLBAR_ACCENT_PINK = "rgba(255,80,128,0.98)";
 const SAVED_LOCK_ICON_GREEN = "#00ff8c";
 /** Onion skin active — toolbar count hex outline (mint, not pink) */
 const ONION_ACTIVE_HEX_STROKE = "rgba(0, 255, 140, 0.55)";
+const FREQUENCY_ACTIVE_HEX_STROKE = "rgba(120,100,230,0.9)";
 /** Saved rows when unlocked — same RGB as × / lock accent, lower alpha for fill */
 const SAVED_ROW_UNLOCKED_BG = "rgba(255,80,128,0.18)";
 /** Saved rows when locked — green (same hue as ROW_COLORS mint #00ff8c) */
@@ -49,6 +50,8 @@ const HEX_CHEVRON_DOWN_PATH =
 /** Toolbar onion glyph (16×16) */
 const ONION_GLYPH_PATH =
   "M15.8535 1.5605L14.4395 0.146478C14.2442 -0.0488261 13.9277 -0.0488261 13.7324 0.146478L12.9043 0.974598C12.2494 1.63346 11.3581 2.00259 10.429 1.99998L7.49999 2.00324C3.91221 2.00063 1.00068 4.90683 0.998043 8.49542C0.997391 9.60154 1.27864 10.6901 1.8164 11.6569H0.5C0.223959 11.6569 0 11.8809 0 12.1569C0 12.433 0.223959 12.6569 0.5 12.6569H1.8431C2.06706 12.6563 2.28777 12.7064 2.49024 12.8028L1.12565 14.1667C0.930348 14.362 0.930348 14.679 1.12565 14.8744C1.32096 15.0697 1.63803 15.0697 1.83334 14.8744L3.19792 13.5098C3.29427 13.7116 3.34441 13.933 3.34375 14.1569V15.5C3.34375 15.776 3.56771 16 3.84375 16C4.1198 16 4.34375 15.776 4.34375 15.5V14.1836C7.47973 15.9271 11.4356 14.7975 13.179 11.6614C13.7162 10.6946 13.9981 9.60669 13.9974 8.50059L14 5.57088C13.9974 4.64185 14.3665 3.75061 15.0254 3.09562L15.8535 2.2675C16.0488 2.07219 16.0488 1.75578 15.8535 1.56048L15.8535 1.5605ZM3.27348 12.0195C1.33083 9.6842 1.64917 6.21686 3.98377 4.27395C6.0221 2.57799 8.98044 2.57799 11.0189 4.27395L10.308 4.98424C8.36602 3.43342 5.53449 3.74987 3.9838 5.69192C2.67195 7.33455 2.67195 9.66662 3.9838 11.3084L3.27348 12.0195ZM5.73251 6.73227C4.89396 7.57277 4.76114 8.88726 5.4148 9.87878L4.698 10.5956C3.54175 9.04613 3.86077 6.85337 5.40959 5.69713C6.65113 4.7707 8.35487 4.7707 9.5964 5.69713L8.87961 6.41391C7.88741 5.76028 6.57294 5.89308 5.73238 6.73227H5.73251ZM8.14654 7.14633L6.14653 9.14631C5.78976 8.39893 6.10617 7.50313 6.85356 7.14633C7.26242 6.95102 7.73767 6.95102 8.14654 7.14633ZM11.3893 12.3891C9.37695 14.3963 6.16737 14.5427 3.98112 12.7263L11.7267 4.9808C13.5431 7.16689 13.3967 10.3766 11.3894 12.3889L11.3893 12.3891ZM14.3177 2.38913C13.5917 3.11113 13.136 4.06023 13.0266 5.078C12.4967 4.22319 11.776 3.50315 10.9218 2.97316C11.9394 2.86378 12.8886 2.40805 13.6107 1.68215L14.0859 1.20754L14.793 1.91457L14.3177 2.38913Z";
+const FREQUENCY_GLYPH_PATH =
+  "M6.28897 0.000659856C6.20496 0.00631994 6.1259 0.042258 6.06636 0.101644C6.00691 0.16112 5.97093 0.240093 5.96526 0.324009L5.04561 13.1344L3.82786 7.24749C3.81266 7.16852 3.77066 7.09727 3.70878 7.04579C3.64699 6.99431 3.56919 6.96583 3.48869 6.9652H0.349415C0.224574 6.9652 0.109169 7.03169 0.0467472 7.13968C-0.0155824 7.24767 -0.0155824 7.38072 0.0467472 7.48873C0.109167 7.59672 0.224565 7.6632 0.349415 7.6632H3.20617L4.87092 15.7211C4.89341 15.8322 4.9686 15.9254 5.07258 15.9708C5.17655 16.0163 5.29617 16.0083 5.39304 15.9493C5.49 15.8904 5.55206 15.7879 5.55944 15.6748L6.43288 3.48541L7.67625 11.7332H7.67634C7.69109 11.8444 7.75855 11.9416 7.85757 11.9943C7.9566 12.0471 8.07506 12.0489 8.1756 11.9992C8.27625 11.9495 8.34667 11.8544 8.36484 11.7438L9.39757 5.70809L10.4663 12.4214C10.481 12.5325 10.5485 12.6297 10.6475 12.6824C10.7465 12.7352 10.865 12.7371 10.9655 12.6873C11.0662 12.6376 11.1366 12.5426 11.1548 12.4319L12.095 7.66397H15.6506V7.66406C15.7754 7.66406 15.8908 7.59749 15.9532 7.48949C16.0156 7.38159 16.0156 7.24852 15.9532 7.14054C15.8908 7.03254 15.7754 6.96606 15.6506 6.96606H11.8074C11.727 6.9666 11.6492 6.99508 11.5874 7.04647C11.5257 7.09777 11.4836 7.16902 11.4683 7.2479L10.8466 10.3837L9.75728 3.51154L9.75737 3.51145C9.74163 3.40049 9.67346 3.30391 9.57407 3.25198C9.4746 3.20006 9.35623 3.19916 9.25611 3.24956C9.15592 3.29996 9.08621 3.39556 9.06885 3.50624L8.04126 9.49063L6.65912 0.293359C6.64544 0.207109 6.59984 0.129215 6.53131 0.0750381C6.46277 0.0208614 6.37633 -0.00564183 6.28917 0.00100519L6.28897 0.000659856Z";
 
 const ROW_COLORS = [
   "#ff78b4",
@@ -79,6 +82,24 @@ const CANVAS_H = 430;
 /** PWA standalone bottom nav — keep rowsScrollBottomPad in sync when changing */
 const NAV_H = 58;
 const ONION_LEVELS = [2, 3, 5, 8, 13, 21];
+const FREQUENCY_LEVELS = [8, 13, 21, 34, 55];
+
+/**
+ * Inner onion rows (depth ≥ 1): brightness b linear from ONION_INNER_BRIGHT_TOP (75%) at the
+ * shallowest inner row down to ONION_INNER_BRIGHT_BOTTOM (20%) at the deepest inner row.
+ * Primary row (depth 0) stays 1.
+ */
+const ONION_INNER_BRIGHT_TOP = 0.75;
+const ONION_INNER_BRIGHT_BOTTOM = 0.2;
+
+function onionInnerBrightnessForDepth(depth, onionCount) {
+  if (depth <= 0) return 1;
+  const lastInnerDepth = onionCount - 1;
+  if (lastInnerDepth < 1) return ONION_INNER_BRIGHT_TOP;
+  if (lastInnerDepth === 1) return ONION_INNER_BRIGHT_TOP;
+  const t = (depth - 1) / (lastInnerDepth - 1);
+  return ONION_INNER_BRIGHT_TOP + (ONION_INNER_BRIGHT_BOTTOM - ONION_INNER_BRIGHT_TOP) * t;
+}
 
 const ROWS = getDrawRows();
 
@@ -396,6 +417,30 @@ function OnionGlyphIcon({ off = false }) {
   );
 }
 
+function FrequencyGlyphIcon({ off = false }) {
+  return (
+    <span
+      style={{
+        position: "relative",
+        zIndex: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 44,
+        height: 44,
+        pointerEvents: "none",
+        userSelect: "none",
+        color: off ? HONEY_HEX_LABEL : "rgba(255,255,255,0.55)"
+      }}
+      aria-hidden="true"
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d={FREQUENCY_GLYPH_PATH} fill="currentColor" />
+      </svg>
+    </span>
+  );
+}
+
 export default function App() {
   const [activeNums, setActiveNums] = useState(new Set());
   const [currentRow, setCurrentRow] = useState(0);
@@ -425,6 +470,7 @@ export default function App() {
   /** When honeycomb is hidden: clicking a ball # in rows toggles that # everywhere */
   const [rowGlobalNums, setRowGlobalNums] = useState(() => new Set());
   const [onionIdx, setOnionIdx] = useState(0);
+  const [frequencyIdx, setFrequencyIdx] = useState(0);
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const enableRowAutoScrollRef = useRef(false);
@@ -433,6 +479,8 @@ export default function App() {
   const savedSectionRef = useRef(null);
   /** "Lotto Max - Winning numbers" label — scroll into view after toolbar minus (row off or all nums cleared). */
   const winningNumbersTitleRef = useRef(null);
+  /** "Number Frequency" title — scroll into view when a window is chosen or a digit is tapped. */
+  const frequencyTitleRef = useRef(null);
   const toolbarClearScrollWinningTitleRef = useRef(false);
   const scrollRootRef = useRef(null);
   const lastScrollTopPwaNavRef = useRef(-1);
@@ -632,6 +680,43 @@ export default function App() {
     [documentScrollIos]
   );
 
+  const scrollFrequencyTitleIntoView = useCallback(
+    (behavior = "smooth") => {
+      const pinned = pinnedHeaderRef.current;
+      const block = frequencyTitleRef.current;
+      if (!pinned || !block) return;
+      const stickyH = pinned.getBoundingClientRect().height;
+      const blockRect = block.getBoundingClientRect();
+
+      if (documentScrollIos) {
+        const delta = blockRect.top - stickyH;
+        if (Math.abs(delta) < 2) return;
+        window.scrollTo({ top: window.scrollY + delta, behavior });
+        return;
+      }
+
+      const root = scrollRootRef.current;
+      if (!root) return;
+      const rootRect = root.getBoundingClientRect();
+      const diff = blockRect.top - rootRect.top;
+      const delta = diff - stickyH;
+      if (Math.abs(delta) < 2) return;
+      root.scrollTo({ top: root.scrollTop + delta, behavior });
+    },
+    [documentScrollIos]
+  );
+
+  /** When user picks a frequency window (only via dropdown), keep the section title in view under the pinned header. */
+  useLayoutEffect(() => {
+    if (frequencyIdx <= 0) return;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollFrequencyTitleIntoView("smooth");
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [frequencyIdx, scrollFrequencyTitleIntoView]);
+
   useLayoutEffect(() => {
     if (!savedOpen || savedRows.length === 0) return;
     let cancelled = false;
@@ -725,6 +810,47 @@ export default function App() {
   }, []);
 
   const onionCount = onionIdx === 0 ? 0 : ONION_LEVELS[onionIdx - 1];
+  const oldestDrawCount = ROWS.length;
+  const selectedFrequencyWindow =
+    frequencyIdx === 0
+      ? 0
+      : frequencyIdx <= FREQUENCY_LEVELS.length
+        ? FREQUENCY_LEVELS[frequencyIdx - 1]
+        : oldestDrawCount;
+  const frequencyDisplay =
+    frequencyIdx === 0
+      ? null
+      : frequencyIdx <= FREQUENCY_LEVELS.length
+        ? `${FREQUENCY_LEVELS[frequencyIdx - 1]}d`
+        : `${oldestDrawCount}d`;
+  const frequencyGroups = useMemo(() => {
+    if (selectedFrequencyWindow <= 0) return null;
+    const windowRows = ROWS.slice(0, Math.min(selectedFrequencyWindow, ROWS.length));
+    if (windowRows.length === 0) return null;
+
+    const maxNumInWindow = windowRows.reduce((m, row) => Math.max(m, row.maxNum || 50), 50);
+    const counts = Array.from({ length: maxNumInWindow + 1 }, () => 0);
+    windowRows.forEach((row) => {
+      row.nums.forEach((n) => {
+        if (n >= 1 && n <= maxNumInWindow) counts[n] += 1;
+      });
+    });
+
+    const groupsMap = new Map();
+    for (let n = 1; n <= maxNumInWindow; n += 1) {
+      const c = counts[n];
+      if (!groupsMap.has(c)) groupsMap.set(c, []);
+      groupsMap.get(c).push(n);
+    }
+
+    const maxCount = Math.max(...counts.slice(1), 0);
+    const groups = [];
+    for (let c = maxCount; c >= 0; c -= 1) {
+      const nums = groupsMap.get(c) || [];
+      if (nums.length > 0) groups.push({ count: c, nums });
+    }
+    return { groups, maxNumInWindow };
+  }, [selectedFrequencyWindow, oldestDrawCount]);
 
   const gridMode = useMemo(() => {
     if (currentRow < 0) return 52;
@@ -799,12 +925,7 @@ export default function App() {
         if (n <= totalCells) map[n] = { brightness: 1 };
       });
       activeRowList.forEach(({ ri, depth }) => {
-        let b;
-        if (depth === 0) b = 1;
-        else {
-          const skinCount = Math.max(onionCount - 1, 1);
-          b = skinCount <= 1 ? 0.75 : 0.75 - ((depth - 1) / (skinCount - 1)) * 0.65;
-        }
+        const b = onionInnerBrightnessForDepth(depth, onionCount);
         ROWS[ri].nums.forEach((n) => {
           if (n >= 1 && n <= totalCells && (!map[n] || map[n].brightness < b)) {
             map[n] = { brightness: b };
@@ -825,12 +946,7 @@ export default function App() {
       if (n <= totalCells) map[n] = { brightness: 1 };
     });
     activeRowList.forEach(({ ri, depth }) => {
-      let b;
-      if (depth === 0) b = 1;
-      else {
-        const skinCount = Math.max(onionCount - 1, 1);
-        b = skinCount <= 1 ? 0.75 : 0.75 - ((depth - 1) / (skinCount - 1)) * 0.65;
-      }
+      const b = onionInnerBrightnessForDepth(depth, onionCount);
       ROWS[ri].nums.forEach((n) => {
         if (n >= 1 && n <= totalCells && (!map[n] || map[n].brightness < b)) {
           map[n] = { brightness: b };
@@ -980,6 +1096,7 @@ export default function App() {
 
   function clearAll() {
     setOnionIdx(0);
+    setFrequencyIdx(0);
     if (currentRow >= 0 || selectedSavedId) {
       if (currentRow >= 0) {
         toolbarClearScrollWinningTitleRef.current = true;
@@ -1049,13 +1166,15 @@ export default function App() {
     if (!enableRowAutoScrollRef.current) {
       return;
     }
+    /** Frequency panel is tall; avoid jumping the list so the winning rows don't scroll under the header. */
+    if (frequencyIdx > 0) return;
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         scrollRowIntoViewBelowPinned(currentRow, "smooth");
       });
     });
     return () => cancelAnimationFrame(id);
-  }, [currentRow, scrollRowIntoViewBelowPinned]);
+  }, [currentRow, frequencyIdx, scrollRowIntoViewBelowPinned]);
 
   useEffect(() => {
     function onKeyDown(event) {
@@ -1093,6 +1212,11 @@ export default function App() {
 
   function hideHoneycomb() {
     setHoneycombVisible(false);
+  }
+
+  /** Frequency window is only set here or cleared in `clearAll` — never coupled to row/onion selection. */
+  function handleFrequencyLevelChange(e) {
+    setFrequencyIdx(Number(e.target.value));
   }
 
   function handleOnionLevelChange(e) {
@@ -1398,7 +1522,8 @@ export default function App() {
     currentRow >= 0 ||
     selectedSavedId !== null ||
     activeNums.size > 0 ||
-    (!honeycombVisible && rowGlobalNums.size > 0);
+    (!honeycombVisible && rowGlobalNums.size > 0) ||
+    frequencyIdx > 0;
   const hasManualClear = activeNums.size > 0;
   const topDraw = currentRow >= 0 ? ROWS[currentRow] : ROWS[0] ?? null;
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
@@ -1707,89 +1832,172 @@ export default function App() {
                   position: "relative",
                   display: "flex",
                   alignItems: "center",
-                  gap: 0,
+                  gap: 6,
                   flexShrink: 0,
                   minHeight: 44
                 }}
               >
-                {onionCount > 0 ? (
-                  <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
-                    <svg
-                      width="44"
-                      height="44"
-                      viewBox="0 0 100 100"
-                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                      aria-hidden="true"
-                    >
-                      <polygon
-                        points="50,2 93,25 93,75 50,98 7,75 7,25"
-                        fill={HONEY_HEX_FACE_RGBA}
-                        stroke={ONION_ACTIVE_HEX_STROKE}
-                        strokeWidth="4"
-                      />
-                    </svg>
-                    <span
-                      style={{
-                        position: "absolute",
-                        left: 0,
-                        right: 0,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        zIndex: 1,
-                        fontSize: 13,
-                        fontWeight: 700,
-                        fontFamily: "'Outfit', -apple-system, sans-serif",
-                        letterSpacing: "-0.055em",
-                        textAlign: "center",
-                        color: SAVED_LOCK_ICON_GREEN,
-                        pointerEvents: "none",
-                        lineHeight: 1
-                      }}
-                    >
-                      {onionCount}
-                    </span>
-                  </div>
-                ) : (
-                  <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
-                    <svg
-                      width="44"
-                      height="44"
-                      viewBox="0 0 100 100"
-                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                      aria-hidden="true"
-                    >
-                      <polygon
-                        points="50,2 93,25 93,75 50,98 7,75 7,25"
-                        fill="rgba(255,255,255,0.05)"
-                        stroke={HONEY_HEX_STROKE_RGBA}
-                        strokeWidth="4"
-                      />
-                    </svg>
-                    <OnionGlyphIcon off />
-                  </div>
-                )}
-                <select
-                  aria-label="Onion skin level"
-                  value={onionIdx}
-                  onChange={handleOnionLevelChange}
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    opacity: 0,
-                    width: "100%",
-                    height: "100%",
-                    border: "none",
-                    cursor: "pointer",
-                    outline: "none"
-                  }}
-                >
-                  <option value={0}>OFF</option>
-                  {ONION_LEVELS.map((level, idx) => (
-                    <option key={level} value={idx + 1}>
-                      {level}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+                  {onionCount > 0 ? (
+                    <>
+                      <svg
+                        width="44"
+                        height="44"
+                        viewBox="0 0 100 100"
+                        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                        aria-hidden="true"
+                      >
+                        <polygon
+                          points="50,2 93,25 93,75 50,98 7,75 7,25"
+                          fill={HONEY_HEX_FACE_RGBA}
+                          stroke={ONION_ACTIVE_HEX_STROKE}
+                          strokeWidth="4"
+                        />
+                      </svg>
+                      <span
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          zIndex: 1,
+                          fontSize: 13,
+                          fontWeight: 700,
+                          fontFamily: "'Outfit', -apple-system, sans-serif",
+                          letterSpacing: "-0.055em",
+                          textAlign: "center",
+                          color: SAVED_LOCK_ICON_GREEN,
+                          pointerEvents: "none",
+                          lineHeight: 1
+                        }}
+                      >
+                        {onionCount}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        width="44"
+                        height="44"
+                        viewBox="0 0 100 100"
+                        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                        aria-hidden="true"
+                      >
+                        <polygon
+                          points="50,2 93,25 93,75 50,98 7,75 7,25"
+                          fill="rgba(255,255,255,0.05)"
+                          stroke={HONEY_HEX_STROKE_RGBA}
+                          strokeWidth="4"
+                        />
+                      </svg>
+                      <OnionGlyphIcon off />
+                    </>
+                  )}
+                  <select
+                    aria-label="Onion skin level"
+                    value={onionIdx}
+                    onChange={handleOnionLevelChange}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      opacity: 0,
+                      width: "100%",
+                      height: "100%",
+                      border: "none",
+                      cursor: "pointer",
+                      outline: "none"
+                    }}
+                  >
+                    <option value={0}>OFF</option>
+                    {ONION_LEVELS.map((level, idx) => (
+                      <option key={level} value={idx + 1}>
+                        {level}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+                  {frequencyDisplay ? (
+                    <>
+                      <svg
+                        width="44"
+                        height="44"
+                        viewBox="0 0 100 100"
+                        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                        aria-hidden="true"
+                      >
+                        <polygon
+                          points="50,2 93,25 93,75 50,98 7,75 7,25"
+                          fill={HONEY_HEX_FACE_RGBA}
+                          stroke={FREQUENCY_ACTIVE_HEX_STROKE}
+                          strokeWidth="4"
+                        />
+                      </svg>
+                      <span
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          zIndex: 1,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          fontFamily: "'Outfit', -apple-system, sans-serif",
+                          letterSpacing: "-0.03em",
+                          textAlign: "center",
+                          color: "rgba(120,100,230,0.9)",
+                          pointerEvents: "none",
+                          lineHeight: 1
+                        }}
+                      >
+                        {frequencyDisplay}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        width="44"
+                        height="44"
+                        viewBox="0 0 100 100"
+                        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                        aria-hidden="true"
+                      >
+                        <polygon
+                          points="50,2 93,25 93,75 50,98 7,75 7,25"
+                          fill="rgba(255,255,255,0.05)"
+                          stroke={HONEY_HEX_STROKE_RGBA}
+                          strokeWidth="4"
+                        />
+                      </svg>
+                      <FrequencyGlyphIcon off />
+                    </>
+                  )}
+                  <select
+                    aria-label="Frequency span"
+                    value={frequencyIdx}
+                    onChange={handleFrequencyLevelChange}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      opacity: 0,
+                      width: "100%",
+                      height: "100%",
+                      border: "none",
+                      cursor: "pointer",
+                      outline: "none"
+                    }}
+                  >
+                    <option value={0}>OFF</option>
+                    {FREQUENCY_LEVELS.map((level, idx) => (
+                      <option key={`${level}d`} value={idx + 1}>
+                        {level}d
+                      </option>
+                    ))}
+                    <option value={FREQUENCY_LEVELS.length + 1}>{oldestDrawCount}d</option>
+                  </select>
+                </div>
               </div>
             </div>
             <div
@@ -1804,7 +2012,8 @@ export default function App() {
                 textTransform: "none",
                 color: showHeaderDrawDateJackpot ? topRowColor : SAVED_LOCK_ICON_GREEN,
                 lineHeight: 1.25,
-                whiteSpace: "pre-line"
+                whiteSpace: "pre-line",
+                textShadow: ROW_NUM_TEXT_SHADOW_IDLE
               }}
               title={
                 showHeaderDrawDateJackpot
@@ -1971,6 +2180,135 @@ export default function App() {
             pointerEvents: "none"
           }}
         />
+      )}
+
+      {frequencyGroups && (
+        <div style={{ flexShrink: 0 }}>
+          <div
+            ref={frequencyTitleRef}
+            style={{
+              ...SECTION_LIST_LABEL_STYLE,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10
+            }}
+          >
+            <span>Number Frequency</span>
+          </div>
+          <div style={{ flexShrink: 0, padding: `${SECTION_LIST_ROWS_PADDING_TOP + 4}px 14px 6px` }}>
+            {frequencyGroups.groups.map(({ count, nums }) => (
+              <div
+                key={`freq-${count}`}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 1,
+                  marginBottom: 6
+                }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 24,
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: 13,
+                    fontWeight: 400,
+                    letterSpacing: "-0.01em",
+                    color: "rgba(170,150,255,0.9)",
+                    lineHeight: 1,
+                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
+                  }}
+                >
+                  {count}x:
+                </div>
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 3,
+                    minHeight: 24
+                  }}
+                >
+                  {nums.map((n, idx) => {
+                    const nColor = spectrumHexForNum(n, frequencyGroups.maxNumInWindow);
+                    const isZero = count === 0;
+                    const isLitInCurrentSelection = Boolean(numBrightness[n]);
+                    const showChip = !isZero && isLitInCurrentSelection;
+                    const onionChipBrightness = numBrightness[n]?.brightness ?? 1;
+                    const chipFillAlpha =
+                      showChip && onionCount > 0 ? 0.15 + onionChipBrightness * 0.85 : showChip ? 0.9 : 0;
+                    return (
+                      <div
+                        key={`freq-${count}-${n}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 3
+                        }}
+                      >
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            requestAnimationFrame(() => {
+                              requestAnimationFrame(() => scrollFrequencyTitleIntoView("smooth"));
+                            });
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              requestAnimationFrame(() => {
+                                requestAnimationFrame(() => scrollFrequencyTitleIntoView("smooth"));
+                              });
+                            }
+                          }}
+                          style={{
+                            width: showChip ? 24 : "auto",
+                            minWidth: showChip ? 24 : 21,
+                            height: 24,
+                            padding: "0 0",
+                            borderRadius: showChip ? 7 : 0,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 13,
+                            fontWeight: 400,
+                            letterSpacing: "-0.01em",
+                            color: isZero ? TOOLBAR_ACCENT_PINK : showChip ? "#000000" : "rgba(120,100,230,0.9)",
+                            background: showChip ? themeRgba(nColor, chipFillAlpha) : "transparent",
+                            lineHeight: 1,
+                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
+                            cursor: "pointer"
+                          }}
+                        >
+                          {n}
+                        </span>
+                        {idx < nums.length - 1 ? (
+                          <span
+                            style={{
+                              color: "rgba(120,100,230,0.85)",
+                              fontSize: 14,
+                              lineHeight: 1,
+                              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
+                            }}
+                          >
+                            ·
+                          </span>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {savedOpen && (
@@ -2181,8 +2519,7 @@ export default function App() {
 
           let cardOpacity = 1;
           if (isOnion && depth > 0) {
-            const skinCount = Math.max(onionCount - 1, 1);
-            const b = skinCount <= 1 ? 0.75 : 0.75 - ((depth - 1) / (skinCount - 1)) * 0.65;
+            const b = onionInnerBrightnessForDepth(depth, onionCount);
             cardOpacity = 0.3 + b * 0.7;
           }
 
