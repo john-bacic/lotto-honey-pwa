@@ -898,10 +898,7 @@ export default function App() {
     frequencyIdx === 0
       ? null
       : frequencyIdx <= FREQUENCY_LEVELS.length
-        ? (() => {
-            const level = FREQUENCY_LEVELS[frequencyIdx - 1];
-            return level === 144 || level === 233 ? String(level) : `${level}d`;
-          })()
+        ? String(FREQUENCY_LEVELS[frequencyIdx - 1])
         : String(oldestDrawCount);
   const frequencyGroups = useMemo(() => {
     if (selectedFrequencyWindow <= 0) return null;
