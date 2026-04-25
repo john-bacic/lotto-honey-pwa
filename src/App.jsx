@@ -213,8 +213,10 @@ function nextTueOrFriDrawDate(from = new Date()) {
   return d;
 }
 
-/** Placeholder jackpot until per-draw data is wired. */
-const NEXT_DRAW_JACKPOT_PLACEHOLDER = 50_000_000;
+/** Placeholder jackpot until per-draw data is wired (latest est. for next Lotto Max draw). */
+const NEXT_DRAW_JACKPOT_PLACEHOLDER = 55_000_000;
+const NEXT_DRAW_MAXMILLIONS_PLACEHOLDER = 4;
+const NEXT_DRAW_BONUS_PRIZES_PLACEHOLDER = 55;
 
 /** Two lines for toolbar “next draw” block; second line is shorter and right-aligned under “million”. */
 function nextDrawToolbarLines(from = new Date()) {
@@ -222,7 +224,7 @@ function nextDrawToolbarLines(from = new Date()) {
   const millions = Math.round(NEXT_DRAW_JACKPOT_PLACEHOLDER / 1_000_000);
   return {
     dateAndJackpot: `next: ${formatDateDdMmYy(next)} ~ $${millions} million`,
-    extras: "+2 max"
+    extras: `+${NEXT_DRAW_MAXMILLIONS_PLACEHOLDER} max +${NEXT_DRAW_BONUS_PRIZES_PLACEHOLDER}\u00a0\u00d7\u00a0$100k`
   };
 }
 
@@ -524,6 +526,8 @@ export default function App() {
   const [honeycombVisible, setHoneycombVisible] = useState(true);
   /** When honeycomb is hidden: clicking a ball # in rows toggles that # everywhere */
   const [rowGlobalNums, setRowGlobalNums] = useState(() => new Set());
+  /** Save button rotating rim: only spins after a manual toggle-on; clears on save / full clear. */
+  const [hasUnsavedManualAdd, setHasUnsavedManualAdd] = useState(false);
   /** Minus clear wave: snapshot lives on `honeyMeshWaveRef` so the Three.js loop fades cells smoothly. */
   const [minusClearWaveActive, setMinusClearWaveActive] = useState(false);
   const [onionIdx, setOnionIdx] = useState(0);
@@ -1136,8 +1140,13 @@ export default function App() {
   function toggleNum(n) {
     setActiveNums((prev) => {
       const next = new Set(prev);
-      if (next.has(n)) next.delete(n);
-      else if (next.size < 7) next.add(n);
+      if (next.has(n)) {
+        next.delete(n);
+      } else if (next.size < 7) {
+        next.add(n);
+        /** Adding a new number arms the save-button rotating rim. */
+        setHasUnsavedManualAdd(true);
+      }
       return next;
     });
   }
@@ -1163,6 +1172,8 @@ export default function App() {
     }, 720);
     setCurrentRow(-1);
     setSavedOpen(true);
+    /** Save committed → stop the rotating rim until user toggles on a new number. */
+    setHasUnsavedManualAdd(false);
     if (saveHeartClearRef.current) clearTimeout(saveHeartClearRef.current);
     setSaveHeartBurstKey((k) => k + 1);
     setSaveHeartFilled(true);
@@ -1220,6 +1231,7 @@ export default function App() {
       }
       setActiveNums(new Set());
       setRowGlobalNums(new Set());
+      setHasUnsavedManualAdd(false);
       setCurrentRow(-1);
       setSelectedSavedId(null);
       return;
@@ -1227,7 +1239,8 @@ export default function App() {
 
     flushMinusRingClearTimers();
     const t0 = performance.now();
-    const { distMap, maxD } = bfsHoneyDistances(1, gridRows);
+    /** Origin = cell 4 (top-right). Wave radiates toward the bottom-left corner. */
+    const { distMap, maxD } = bfsHoneyDistances(4, gridRows);
     honeyMeshWaveRef.current = {
       t0,
       distMap,
@@ -1250,6 +1263,7 @@ export default function App() {
       /** Cells already faded to dark inside the loop — flushing state here doesn't visibly jump. */
       setActiveNums(new Set());
       setRowGlobalNums(new Set());
+      setHasUnsavedManualAdd(false);
       if (hadRowLikeSelection) {
         if (winningRowWasSelected && scrollWinningTitleAfterClear) {
           toolbarClearScrollWinningTitleRef.current = true;
@@ -1863,58 +1877,10 @@ export default function App() {
             flexShrink: 0
           }}
         >
-          <div style={{ justifySelf: "start" }}>
-          <button
-            onClick={clearAll}
-            style={{
-              position: "relative",
-              width: 44,
-              height: 44,
-              border: "none",
-              padding: 0,
-              background: "transparent",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              flexShrink: 0,
-              alignSelf: "center"
-            }}
-          >
-            <svg
-              width="44"
-              height="44"
-              viewBox="0 0 100 100"
-              style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-              aria-hidden="true"
-            >
-              <polygon
-                points="50,2 93,25 93,75 50,98 7,75 7,25"
-                fill={canTurnOff ? HONEY_HEX_FACE_RGBA : "rgba(255,255,255,0.05)"}
-                stroke={hasRowLikeSelection ? TOOLBAR_ACCENT_PINK : HONEY_HEX_STROKE_RGBA}
-                strokeWidth="4"
-              />
-              {hasManualClear && (
-                <polygon
-                  points="50,11 85,30 85,70 50,89 15,70 15,30"
-                  fill="none"
-                  stroke={TOOLBAR_ACCENT_PINK}
-                  strokeWidth="4"
-                />
-              )}
-            </svg>
-            <span
-              style={{
-                position: "relative",
-                zIndex: 1,
-                width: 12,
-                height: 2,
-                borderRadius: 999,
-                background: canTurnOff ? TOOLBAR_ACCENT_PINK : HONEY_HEX_LABEL
-              }}
-            />
-          </button>
-          </div>
+          <div
+            style={{ justifySelf: "start", width: 44, height: 44, flexShrink: 0, alignSelf: "center" }}
+            aria-hidden="true"
+          />
 
           <div style={{ justifySelf: "center" }}>
             <button
@@ -1954,10 +1920,58 @@ export default function App() {
             </button>
           </div>
 
-          <div
-            style={{ justifySelf: "end", width: 44, height: 44, flexShrink: 0, alignSelf: "center" }}
-            aria-hidden="true"
-          />
+          <div style={{ justifySelf: "end" }}>
+            <button
+              onClick={clearAll}
+              style={{
+                position: "relative",
+                width: 44,
+                height: 44,
+                border: "none",
+                padding: 0,
+                background: "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                flexShrink: 0,
+                alignSelf: "center"
+              }}
+            >
+              <svg
+                width="44"
+                height="44"
+                viewBox="0 0 100 100"
+                style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                aria-hidden="true"
+              >
+                <polygon
+                  points="50,2 93,25 93,75 50,98 7,75 7,25"
+                  fill={canTurnOff ? HONEY_HEX_FACE_RGBA : "rgba(255,255,255,0.05)"}
+                  stroke={hasRowLikeSelection ? TOOLBAR_ACCENT_PINK : HONEY_HEX_STROKE_RGBA}
+                  strokeWidth="4"
+                />
+                {hasManualClear && (
+                  <polygon
+                    points="50,11 85,30 85,70 50,89 15,70 15,30"
+                    fill="none"
+                    stroke={TOOLBAR_ACCENT_PINK}
+                    strokeWidth="4"
+                  />
+                )}
+              </svg>
+              <span
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  width: 12,
+                  height: 2,
+                  borderRadius: 999,
+                  background: canTurnOff ? TOOLBAR_ACCENT_PINK : HONEY_HEX_LABEL
+                }}
+              />
+            </button>
+          </div>
         </div>
 
         <div
@@ -2286,8 +2300,8 @@ export default function App() {
                 gap: 6,
                 flexShrink: 0,
                 minHeight: 44,
-                /** Honeycomb hidden: shift up by one toolbar hex (same size as show/hide honeycomb). */
-                marginTop: honeycombVisible ? 0 : -44
+                /** Keep save controls on this lower toolbar row when honeycomb is hidden (avoid overlap with top-right minus). */
+                marginTop: 0
               }}
             >
               <div
@@ -2304,7 +2318,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={saveManualRow}
-                    className="save-btn save-btn--ready"
+                    className={`save-btn${hasUnsavedManualAdd ? " save-btn--ready" : ""}`}
                     aria-label={`Save ${manualCount} numbers to saved rows`}
                     title={`Save ${manualCount} number${manualCount === 1 ? "" : "s"}`}
                     style={{
@@ -2321,7 +2335,7 @@ export default function App() {
                       flexShrink: 0
                     }}
                   >
-                    <span className="save-btn-glow" aria-hidden="true" />
+                    <span className="save-btn-rot-glow" aria-hidden="true" />
                     <svg
                       width="44"
                       height="44"

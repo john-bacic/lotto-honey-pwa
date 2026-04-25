@@ -4,6 +4,7 @@ export const lottoMaxWinningNumbers2023 = [
   //const lottoMaxWinningNumbers2023 = [
 
 
+  { date: 'April 24, 2026', day: 'f', numbers: [11, 14, 26, 31, 36, 39, 43], bonus: 6, jackpot: 50000000 },
   { date: 'April 21, 2026', day: 't', numbers: [2, 12, 16, 19, 24, 29, 48], bonus: 10, jackpot: 40000000 },
   { date: 'April 17, 2026', day: 'f', numbers: [7, 12, 29, 38, 39, 44, 52], bonus: 35, jackpot: 30000000 },
   { date: 'April 14, 2026', day: 't', numbers: [4, 13, 20, 31, 37, 43, 51], bonus: 9, jackpot: 25000000 },

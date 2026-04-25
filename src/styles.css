@@ -77,37 +77,45 @@ body {
   isolation: isolate;
 }
 
-.save-btn-glow {
+/*
+ * Rotating red conic-gradient hex ring behind the save button.
+ * Sits 2px outside the SVG hex; clipped to the same hex shape so a
+ * thin red glow rim circles the button. `@property --hex-angle` lets
+ * the gradient angle animate (graceful fallback to static on older browsers).
+ */
+@property --hex-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.save-btn-rot-glow {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 40px;
-  height: 40px;
-  transform: translate(-50%, -50%) scale(0.95);
-  border-radius: 999px;
-  background: rgba(255, 80, 128, 0.5);
-  filter: blur(9px);
-  opacity: 0;
-  pointer-events: none;
+  inset: -2px;
   z-index: 0;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--hex-angle),
+    rgba(255, 36, 36, 0) 0deg,
+    rgba(255, 60, 60, 1) 60deg,
+    rgba(255, 36, 36, 0) 140deg,
+    rgba(255, 36, 36, 0) 220deg,
+    rgba(255, 60, 60, 1) 300deg,
+    rgba(255, 36, 36, 0) 360deg
+  );
+  clip-path: polygon(50% 2%, 93% 25%, 93% 75%, 50% 98%, 7% 75%, 7% 25%);
+  filter: blur(3px) saturate(1.15);
+  opacity: 0;
 }
 
-.save-btn--ready .save-btn-glow {
-  animation: save-btn-glow-pulse 1.35s ease-in-out infinite;
+.save-btn--ready .save-btn-rot-glow {
+  opacity: 1;
+  animation: save-btn-rot-glow-spin 2.4s linear infinite;
 }
 
-@keyframes save-btn-glow-pulse {
-  0% {
-    opacity: 0.35;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-  50% {
-    opacity: 0.9;
-    transform: translate(-50%, -50%) scale(1.24);
-  }
-  100% {
-    opacity: 0.35;
-    transform: translate(-50%, -50%) scale(0.9);
+@keyframes save-btn-rot-glow-spin {
+  to {
+    --hex-angle: 360deg;
   }
 }
 
