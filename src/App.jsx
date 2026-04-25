@@ -291,6 +291,47 @@ function getGridSize(gridRows) {
   };
 }
 
+/** Hex cells sharing an edge with `num` in the current grid (uses same geometry as `getPositions`). */
+function getAdjacentNums(num, gridRows) {
+  const pos = getPositions(gridRows);
+  const me = pos.find((p) => p.num === num);
+  if (!me) return [];
+  let minD = Infinity;
+  const dists = [];
+  for (const p of pos) {
+    if (p.num === num) continue;
+    const d = Math.hypot(p.x - me.x, p.y - me.y);
+    dists.push({ p, d });
+    if (d < minD) minD = d;
+  }
+  if (!Number.isFinite(minD) || minD < 1e-4) return [];
+  const tol = minD * 0.1 + 0.75;
+  return dists.filter(({ d }) => d <= minD + tol).map(({ p }) => p.num);
+}
+
+/** Shortest path length from `origin` to every cell (for outward wave timing). */
+function bfsHoneyDistances(origin, gridRows) {
+  const total = gridRows.reduce((sum, r) => sum + r, 0);
+  const distMap = { [origin]: 0 };
+  const q = [origin];
+  for (let qi = 0; qi < q.length; qi += 1) {
+    const u = q[qi];
+    const neigh = getAdjacentNums(u, gridRows);
+    for (let j = 0; j < neigh.length; j += 1) {
+      const v = neigh[j];
+      if (distMap[v] !== undefined) continue;
+      distMap[v] = distMap[u] + 1;
+      q.push(v);
+    }
+  }
+  let maxD = 0;
+  for (let n = 1; n <= total; n += 1) {
+    const d = distMap[n];
+    if (d !== undefined && d > maxD) maxD = d;
+  }
+  return { distMap, maxD };
+}
+
 function NavButton({ dir, arrowColor, onNav, dimmed = false }) {
   const timerRef = useRef(null);
   const intervalRef = useRef(null);
@@ -478,6 +519,8 @@ export default function App() {
   const [frequencyIdx, setFrequencyIdx] = useState(0);
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
+  /** Manual honeycomb tap: scale-down BFS wave — outward when adding a #, inward when removing. */
+  const honeyMeshWaveRef = useRef(null);
   const enableRowAutoScrollRef = useRef(false);
   const [labelPos, setLabelPos] = useState([]);
   const rowsRef = useRef(null);
@@ -1364,12 +1407,33 @@ export default function App() {
 
     function loop() {
       state.raf = requestAnimationFrame(loop);
+      const wv = honeyMeshWaveRef.current;
+      const elapsed = wv ? performance.now() - wv.t0 : 0;
+      const hopMs = 40;
+      const pulseMs = 135;
+      /** Toggle on: outward (d=0 first). Toggle off: inward (periphery first). Same scale-down dip. */
+      const waveDipAmp = 0.1;
+      if (wv && elapsed > wv.maxD * hopMs + pulseMs + 80) {
+        honeyMeshWaveRef.current = null;
+      }
       for (let i = 1; i <= tc; i += 1) {
         const m = state.meshes[i];
         m.cur += (m.tgt - m.cur) * 0.14;
         m.pulse += (m.pulseTgt - m.pulse) * 0.5;
         const pulseScale = 1 + m.pulse * 0.0;
-        const s = m.cur * pulseScale;
+        let waveDip = 0;
+        if (wv && wv.distMap) {
+          const d = wv.distMap[i];
+          if (d !== undefined) {
+            const inward = Boolean(wv.inward);
+            const ringDelay = inward ? (wv.maxD - d) * hopMs : d * hopMs;
+            const tCell = elapsed - ringDelay;
+            if (tCell >= 0 && tCell < pulseMs) {
+              waveDip = Math.sin((tCell / pulseMs) * Math.PI) * waveDipAmp;
+            }
+          }
+        }
+        const s = m.cur * pulseScale * (1 - waveDip);
         m.mesh.scale.setScalar(s);
         m.innerMesh.scale.setScalar(s);
         m.outMesh.scale.setScalar(s);
@@ -1377,13 +1441,15 @@ export default function App() {
       ren.render(scene, cam);
     }
     loop();
-  }, []);
+  }, [honeyMeshWaveRef]);
 
   useEffect(() => {
     const el = mountRef.current;
     if (!el) return;
+    honeyMeshWaveRef.current = null;
     buildScene(el, gridRows, totalCells);
     return () => {
+      honeyMeshWaveRef.current = null;
       if (!sceneRef.current) return;
       cancelAnimationFrame(sceneRef.current.raf);
       sceneRef.current.ren.dispose();
@@ -1793,7 +1859,16 @@ export default function App() {
                     <div
                       key={n}
                       onClick={() => {
-                        if (!isBlocked) toggleNum(n);
+                        if (isBlocked) return;
+                        const { distMap, maxD } = bfsHoneyDistances(n, gridRows);
+                        const inward = activeNums.has(n);
+                        honeyMeshWaveRef.current = {
+                          t0: performance.now(),
+                          distMap,
+                          maxD,
+                          inward
+                        };
+                        toggleNum(n);
                       }}
                       style={{
                         position: "absolute",
