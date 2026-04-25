@@ -92,7 +92,7 @@ function honeyWaveTotalDurationMs(maxD) {
 }
 
 const ONION_LEVELS = [2, 3, 5, 8, 13, 21];
-const FREQUENCY_LEVELS = [8, 13, 21, 34, 55];
+const FREQUENCY_LEVELS = [8, 13, 21, 34, 55, 89, 144, 233];
 
 /**
  * Inner onion rows (depth ≥ 1): brightness b linear from ONION_INNER_BRIGHT_TOP (75%) at the
@@ -898,7 +898,10 @@ export default function App() {
     frequencyIdx === 0
       ? null
       : frequencyIdx <= FREQUENCY_LEVELS.length
-        ? `${FREQUENCY_LEVELS[frequencyIdx - 1]}d`
+        ? (() => {
+            const level = FREQUENCY_LEVELS[frequencyIdx - 1];
+            return level === 144 || level === 233 ? String(level) : `${level}d`;
+          })()
         : String(oldestDrawCount);
   const frequencyGroups = useMemo(() => {
     if (selectedFrequencyWindow <= 0) return null;
