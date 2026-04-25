@@ -1652,7 +1652,8 @@ export default function App() {
         h.tgt = 1;
       }
       h.pulseTgt = justLitNums.has(n) ? 1 : 0;
-      h.innerMat.opacity = activeNums.has(n) || rowGlobalNums.has(n) ? 1 : 0;
+      /** Inner keyline indicates only manual honeycomb picks, not row/saved global toggles. */
+      h.innerMat.opacity = activeNums.has(n) ? 1 : 0;
     }
   }, [numBrightness, totalCells, activeNums, rowGlobalNums, justLitNums]);
 
@@ -2013,7 +2014,8 @@ export default function App() {
                 {labelPos.map(({ num: n, left, top }) => {
                   const info = numBrightness[n];
                   const isOn = Boolean(info);
-                  const isBlocked = manualLimitReached && !activeNums.has(n);
+                  const isBlocked =
+                    manualLimitReached && !activeNums.has(n) && !rowGlobalNums.has(n);
                   const labelColor = isBlocked
                     ? "rgba(52,54,58,0.95)"
                     : isOn
@@ -2024,7 +2026,24 @@ export default function App() {
                       key={n}
                       onClick={() => {
                         if (isBlocked) return;
-                        startHoneycombMeshWave(n, activeNums.has(n));
+                        const willTurnOff = activeNums.has(n) || rowGlobalNums.has(n);
+                        startHoneycombMeshWave(n, willTurnOff);
+                        if (willTurnOff) {
+                          /** Allow turning off row/saved toggles directly from the honeycomb. */
+                          setActiveNums((prev) => {
+                            if (!prev.has(n)) return prev;
+                            const next = new Set(prev);
+                            next.delete(n);
+                            return next;
+                          });
+                          setRowGlobalNums((prev) => {
+                            if (!prev.has(n)) return prev;
+                            const next = new Set(prev);
+                            next.delete(n);
+                            return next;
+                          });
+                          return;
+                        }
                         toggleNum(n);
                       }}
                       style={{
@@ -2037,8 +2056,8 @@ export default function App() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: 12,
-                        fontWeight: 700,
+                        fontSize: 14,
+                        fontWeight: 600,
                         color: labelColor,
                         textShadow: isBlocked || isOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
                         pointerEvents: "auto",
