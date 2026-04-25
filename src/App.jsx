@@ -82,6 +82,15 @@ const ROW_S = HEX_H * 0.75 + 1.5;
 const CANVAS_H = 430;
 /** PWA standalone bottom nav — keep rowsScrollBottomPad in sync when changing */
 const NAV_H = 58;
+/** Honeycomb mesh/label wave — keep in sync with `buildScene` loop and minus-clear deferral. */
+const HONEY_WAVE_HOP_MS = 40;
+const HONEY_WAVE_PULSE_MS = 135;
+const HONEY_WAVE_TAIL_MS = 80;
+
+function honeyWaveTotalDurationMs(maxD) {
+  return maxD * HONEY_WAVE_HOP_MS + HONEY_WAVE_PULSE_MS + HONEY_WAVE_TAIL_MS;
+}
+
 const ONION_LEVELS = [2, 3, 5, 8, 13, 21];
 const FREQUENCY_LEVELS = [8, 13, 21, 34, 55];
 
@@ -515,12 +524,20 @@ export default function App() {
   const [honeycombVisible, setHoneycombVisible] = useState(true);
   /** When honeycomb is hidden: clicking a ball # in rows toggles that # everywhere */
   const [rowGlobalNums, setRowGlobalNums] = useState(() => new Set());
+  /** Minus clear wave: snapshot lives on `honeyMeshWaveRef` so the Three.js loop fades cells smoothly. */
+  const [minusClearWaveActive, setMinusClearWaveActive] = useState(false);
   const [onionIdx, setOnionIdx] = useState(0);
   const [frequencyIdx, setFrequencyIdx] = useState(0);
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   /** Manual honeycomb tap: scale-down BFS wave — outward when adding a #, inward when removing. */
   const honeyMeshWaveRef = useRef(null);
+  /** Overlay digit inner (num → span): loop() applies scale only; parent keeps translate. */
+  const honeyLabelElByNumRef = useRef({});
+  /** Toolbar minus: finalize timer only (ring clears use rAF + `minusWaveClearMetaRef`). */
+  const clearMinusRingTimersRef = useRef([]);
+  /** Minus wave: same `t0` / `distMap` as `honeyMeshWaveRef`; rAF clears `orderedNums` one cell per frame. */
+  const minusWaveClearMetaRef = useRef(null);
   const enableRowAutoScrollRef = useRef(false);
   const [labelPos, setLabelPos] = useState([]);
   const rowsRef = useRef(null);
@@ -580,6 +597,8 @@ export default function App() {
       selectionRevealTimersRef.current = [];
       if (savedRowAnimClearRef.current) clearTimeout(savedRowAnimClearRef.current);
       if (savedRowsGlowClearRef.current) clearTimeout(savedRowsGlowClearRef.current);
+      clearMinusRingTimersRef.current.forEach((id) => clearTimeout(id));
+      clearMinusRingTimersRef.current = [];
     };
   }, []);
 
@@ -1102,6 +1121,18 @@ export default function App() {
   const manualCount = activeNums.size;
   const manualLimitReached = manualCount >= 7;
 
+  /** BFS scale wave on honeycomb meshes + labels (`inward` = toggling off / contracting). */
+  function startHoneycombMeshWave(n, inward) {
+    if (n < 1 || n > totalCells) return;
+    const { distMap, maxD } = bfsHoneyDistances(n, gridRows);
+    honeyMeshWaveRef.current = {
+      t0: performance.now(),
+      distMap,
+      maxD,
+      inward
+    };
+  }
+
   function toggleNum(n) {
     setActiveNums((prev) => {
       const next = new Set(prev);
@@ -1151,22 +1182,87 @@ export default function App() {
     setCurrentRow(-1);
   }
 
+  function flushMinusRingClearTimers() {
+    clearMinusRingTimersRef.current.forEach((id) => clearTimeout(id));
+    clearMinusRingTimersRef.current = [];
+    minusWaveClearMetaRef.current = null;
+    setMinusClearWaveActive(false);
+  }
+
   function clearAll() {
-    setOnionIdx(0);
     const scrollWinningTitleAfterClear = frequencyIdx <= 0;
-    if (currentRow >= 0 || selectedSavedId) {
-      if (currentRow >= 0 && scrollWinningTitleAfterClear) {
+    const winningRowWasSelected = currentRow >= 0;
+    const hadRowLikeSelection = currentRow >= 0 || selectedSavedId !== null;
+
+    /** Snapshot every cell currently lit (any source) — Three.js loop fades each as the wave passes. */
+    const litAtStart = {};
+    let litCount = 0;
+    Object.keys(numBrightness).forEach((key) => {
+      const n = Number(key);
+      if (n >= 1 && n <= totalCells) {
+        litAtStart[n] = numBrightness[n].brightness || 1;
+        litCount += 1;
+      }
+    });
+    const innerAtStart = {};
+    activeNums.forEach((n) => {
+      if (n >= 1 && n <= totalCells) innerAtStart[n] = 1;
+    });
+    rowGlobalNums.forEach((n) => {
+      if (n >= 1 && n <= totalCells) innerAtStart[n] = 1;
+    });
+
+    if (litCount === 0) {
+      flushMinusRingClearTimers();
+      setOnionIdx(0);
+      if (scrollWinningTitleAfterClear) {
         toolbarClearScrollWinningTitleRef.current = true;
       }
+      setActiveNums(new Set());
+      setRowGlobalNums(new Set());
       setCurrentRow(-1);
       setSelectedSavedId(null);
       return;
     }
-    if (scrollWinningTitleAfterClear) {
-      toolbarClearScrollWinningTitleRef.current = true;
-    }
-    setActiveNums(new Set());
-    setRowGlobalNums(new Set());
+
+    flushMinusRingClearTimers();
+    const t0 = performance.now();
+    const { distMap, maxD } = bfsHoneyDistances(1, gridRows);
+    honeyMeshWaveRef.current = {
+      t0,
+      distMap,
+      maxD,
+      inward: false,
+      minusClear: true,
+      litAtStart,
+      innerAtStart
+    };
+    minusWaveClearMetaRef.current = {
+      t0,
+      distMap,
+      maxD
+    };
+    setMinusClearWaveActive(true);
+
+    const waveEndMs = honeyWaveTotalDurationMs(maxD);
+    const timerId = setTimeout(() => {
+      minusWaveClearMetaRef.current = null;
+      /** Cells already faded to dark inside the loop — flushing state here doesn't visibly jump. */
+      setActiveNums(new Set());
+      setRowGlobalNums(new Set());
+      if (hadRowLikeSelection) {
+        if (winningRowWasSelected && scrollWinningTitleAfterClear) {
+          toolbarClearScrollWinningTitleRef.current = true;
+        }
+        setCurrentRow(-1);
+        setSelectedSavedId(null);
+      } else if (scrollWinningTitleAfterClear) {
+        toolbarClearScrollWinningTitleRef.current = true;
+      }
+      setOnionIdx(0);
+      setMinusClearWaveActive(false);
+    }, waveEndMs);
+    clearMinusRingTimersRef.current.push(timerId);
   }
 
   const arrowNav = useCallback(
@@ -1261,6 +1357,7 @@ export default function App() {
   function toggleRowGlobalNum(e, n) {
     if (n < 1 || n > totalCells) return;
     e.stopPropagation();
+    startHoneycombMeshWave(n, rowGlobalNums.has(n));
     setRowGlobalNums((prev) => {
       const next = new Set(prev);
       if (next.has(n)) next.delete(n);
@@ -1391,7 +1488,9 @@ export default function App() {
         tgt: 1,
         cur: 1,
         pulse: 0,
-        pulseTgt: 0
+        pulseTgt: 0,
+        /** Minus-clear fade multiplier (animated per-frame in `loop()`). */
+        fadeMul: 1
       };
     });
 
@@ -1405,15 +1504,21 @@ export default function App() {
     const state = { meshes, ren, scene, cam, raf: 0, tc };
     sceneRef.current = state;
 
+    /** Single Three.js color buffer reused per frame to avoid GC churn. */
+    const tmpColor = new THREE.Color();
+    const black = new THREE.Color(HEX_FILL);
+    const darkBorder = new THREE.Color(HEX_RING);
+
     function loop() {
       state.raf = requestAnimationFrame(loop);
       const wv = honeyMeshWaveRef.current;
       const elapsed = wv ? performance.now() - wv.t0 : 0;
-      const hopMs = 40;
-      const pulseMs = 135;
-      /** Toggle on: outward (d=0 first). Toggle off: inward (periphery first). Same scale-down dip. */
+      /** Toggle on / minus clear: outward (d=0 first). Toggle off: inward (periphery first). Same scale-down dip. */
       const waveDipAmp = 0.1;
-      if (wv && elapsed > wv.maxD * hopMs + pulseMs + 80) {
+      const minusActive = Boolean(wv && wv.minusClear && wv.litAtStart);
+      /** Smooth fade window per cell starting when wave reaches it; finishes well inside wave tail. */
+      const minusFadeMs = 200;
+      if (wv && elapsed > honeyWaveTotalDurationMs(wv.maxD)) {
         honeyMeshWaveRef.current = null;
       }
       for (let i = 1; i <= tc; i += 1) {
@@ -1426,10 +1531,12 @@ export default function App() {
           const d = wv.distMap[i];
           if (d !== undefined) {
             const inward = Boolean(wv.inward);
-            const ringDelay = inward ? (wv.maxD - d) * hopMs : d * hopMs;
+            const ringDelay = inward
+              ? (wv.maxD - d) * HONEY_WAVE_HOP_MS
+              : d * HONEY_WAVE_HOP_MS;
             const tCell = elapsed - ringDelay;
-            if (tCell >= 0 && tCell < pulseMs) {
-              waveDip = Math.sin((tCell / pulseMs) * Math.PI) * waveDipAmp;
+            if (tCell >= 0 && tCell < HONEY_WAVE_PULSE_MS) {
+              waveDip = Math.sin((tCell / HONEY_WAVE_PULSE_MS) * Math.PI) * waveDipAmp;
             }
           }
         }
@@ -1437,11 +1544,51 @@ export default function App() {
         m.mesh.scale.setScalar(s);
         m.innerMesh.scale.setScalar(s);
         m.outMesh.scale.setScalar(s);
+
+        let labelMul = 1;
+        if (minusActive) {
+          const baseB = wv.litAtStart[i] || 0;
+          const wasInner = wv.innerAtStart && wv.innerAtStart[i] ? 1 : 0;
+          const d = wv.distMap[i];
+          let target = 1;
+          if (baseB > 0 && d !== undefined) {
+            const tFade = elapsed - d * HONEY_WAVE_HOP_MS;
+            if (tFade > 0) {
+              /** Ease-out: smooth, slightly front-loaded fade as the wave passes through the cell. */
+              const t = Math.min(1, tFade / minusFadeMs);
+              target = 1 - Math.sin((t * Math.PI) / 2);
+            }
+          }
+          m.fadeMul += (target - m.fadeMul) * 0.32;
+          if (baseB > 0) {
+            const effB = baseB * m.fadeMul;
+            tmpColor.copy(black).lerp(m.specColor, effB);
+            m.mat.color.copy(tmpColor);
+            tmpColor.copy(darkBorder).lerp(m.specBorder, effB);
+            m.outMat.color.copy(tmpColor);
+            if (wasInner) m.innerMat.opacity = m.fadeMul;
+            labelMul = m.fadeMul;
+          }
+        } else if (m.fadeMul !== 1) {
+          m.fadeMul = 1;
+        }
+
+        const labelEl = honeyLabelElByNumRef.current[i];
+        if (labelEl) {
+          labelEl.style.transform = `scale(${1 - waveDip})`;
+          if (minusActive && wv.litAtStart[i]) {
+            /** Lit label is `LIT_NUM_COLOR` (#000); fade toward idle `HONEY_HEX_LABEL` (#757575). */
+            const c = Math.round(0x75 * (1 - labelMul));
+            labelEl.style.color = `rgb(${c},${c},${c})`;
+          } else if (labelEl.style.color) {
+            labelEl.style.color = "";
+          }
+        }
       }
       ren.render(scene, cam);
     }
     loop();
-  }, [honeyMeshWaveRef]);
+  }, [honeyMeshWaveRef, honeyLabelElByNumRef]);
 
   useEffect(() => {
     const el = mountRef.current;
@@ -1860,14 +2007,7 @@ export default function App() {
                       key={n}
                       onClick={() => {
                         if (isBlocked) return;
-                        const { distMap, maxD } = bfsHoneyDistances(n, gridRows);
-                        const inward = activeNums.has(n);
-                        honeyMeshWaveRef.current = {
-                          t0: performance.now(),
-                          distMap,
-                          maxD,
-                          inward
-                        };
+                        startHoneycombMeshWave(n, activeNums.has(n));
                         toggleNum(n);
                       }}
                       style={{
@@ -1888,7 +2028,19 @@ export default function App() {
                         cursor: isBlocked ? "not-allowed" : "pointer"
                       }}
                     >
-                      {n}
+                      <span
+                        ref={(el) => {
+                          if (el) honeyLabelElByNumRef.current[n] = el;
+                          else delete honeyLabelElByNumRef.current[n];
+                        }}
+                        style={{
+                          display: "inline-block",
+                          transformOrigin: "50% 50%",
+                          lineHeight: 1
+                        }}
+                      >
+                        {n}
+                      </span>
                     </div>
                   );
                 })}
