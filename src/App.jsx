@@ -2113,6 +2113,8 @@ export default function App() {
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
   /** Date + jackpot in toolbar only when a winning row is selected (saved-only → blank). */
   const showHeaderDrawDateJackpot = canTurnOff && hasRowLikeSelection && currentRow >= 0;
+  /** "Next draw" placeholder is visible only in fully idle state. */
+  const showHeaderNextDrawPlaceholder = !canTurnOff && !randomCascadeBusy;
   const nextDrawToolbarPlaceholderLines = nextDrawToolbarLines();
   const toolbarHeader = useMemo(
     () =>
@@ -2127,7 +2129,8 @@ export default function App() {
             primary: formatDrawDateJackpot(topDraw.date, topDraw.jackpot),
             secondary: null
           }
-        : {
+        : showHeaderNextDrawPlaceholder
+          ? {
             key: `next|${nextDrawToolbarPlaceholderLines.dateAndJackpot}|${nextDrawToolbarPlaceholderLines.extras}`,
             color: SAVED_LOCK_ICON_GREEN,
             letterSpacing: 0.35,
@@ -2136,8 +2139,24 @@ export default function App() {
             align: "right",
             primary: nextDrawToolbarPlaceholderLines.dateAndJackpot,
             secondary: nextDrawToolbarPlaceholderLines.extras
+          }
+          : {
+            key: "blank",
+            color: SAVED_LOCK_ICON_GREEN,
+            letterSpacing: 0.35,
+            whiteSpace: "normal",
+            title: undefined,
+            align: "center",
+            primary: "",
+            secondary: null
           },
-    [showHeaderDrawDateJackpot, topDraw, topRowColor, nextDrawToolbarPlaceholderLines]
+    [
+      showHeaderDrawDateJackpot,
+      topDraw,
+      topRowColor,
+      showHeaderNextDrawPlaceholder,
+      nextDrawToolbarPlaceholderLines
+    ]
   );
 
   const rowsScrollBottomPad =
