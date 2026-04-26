@@ -25,6 +25,8 @@ const HEX_FILL_DARK = 0x323339;
 const HEX_RING_DARK = 0x2a2b31;
 const HEX_FILL_LIGHT = 0xeef0f4;
 const HEX_RING_LIGHT = 0xf8f9fb;
+const THEME_COLOR_DARK = "#212226";
+const THEME_COLOR_LIGHT = "#f4f5f8";
 function hexFillForMode(mode) {
   return mode === "light" ? HEX_FILL_LIGHT : HEX_FILL_DARK;
 }
@@ -652,6 +654,10 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", themeMode);
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) {
+      themeMeta.setAttribute("content", themeMode === "light" ? THEME_COLOR_LIGHT : THEME_COLOR_DARK);
+    }
     try {
       window.localStorage.setItem("lotto-honey-theme", themeMode);
     } catch {
