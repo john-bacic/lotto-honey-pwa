@@ -28,7 +28,7 @@ html[data-theme="dark"] {
 html[data-theme="light"] {
   --c-bg: #f4f5f8;
   --c-card: #ffffff;
-  --c-num-cell-idle: #f4f5f7;
+  --c-num-cell-idle: #ffffff;
   --c-nav-bg: rgba(248, 249, 251, 0.92);
   --c-hex-face: rgba(238, 240, 244, 0.98);
   --c-hex-stroke: #f8f9fb;
