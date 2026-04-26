@@ -2109,6 +2109,10 @@ export default function App() {
   const hasExpandButton = savedRows.length > 0;
   const hasRightBottomControls = manualCount > 0 || savedRows.length > 0;
   const showSaveButton = manualCount > 0 && !randomCascadeBusy;
+  const randomIconFill =
+    randomCascadeRingActive || randomCascadeRingFading
+      ? `hsl(${randomCascadeGlowHue} 95% 72%)`
+      : HONEY_HEX_LABEL;
   const topDraw = currentRow >= 0 ? ROWS[currentRow] : ROWS[0] ?? null;
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
   /** Date + jackpot in toolbar only when a winning row is selected (saved-only → blank). */
@@ -2795,7 +2799,7 @@ export default function App() {
                   >
                     <path
                       d="M0 0.00047973V0.927061H4.13452L6.24413 3.12114L6.56588 3.44911L7.20549 2.80734L6.8927 2.47386L4.51442 0.000330891H0.453767L0 0.00047973ZM14.7857 0.00047973L4.13452 11.0805H0V12H4.51455L9.64933 6.66172L14.7857 12H19V11.0805H15.1674L10.2855 6.00181L15.1674 0.926739H19V0.00015745L18.5459 0L14.7857 0.00047973Z"
-                      fill={HONEY_HEX_LABEL}
+                      fill={randomIconFill}
                     />
                   </svg>
                 </button>
