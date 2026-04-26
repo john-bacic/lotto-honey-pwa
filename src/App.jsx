@@ -612,6 +612,7 @@ export default function App() {
   /** "Number Frequency" title — scroll into view when a window is chosen or a digit is tapped. */
   const frequencyTitleRef = useRef(null);
   const toolbarClearScrollWinningTitleRef = useRef(false);
+  const toolbarHeaderFadeTimerRef = useRef(null);
   const scrollRootRef = useRef(null);
   const lastScrollTopPwaNavRef = useRef(-1);
   /** While true, PWA bottom nav ignores scroll deltas (chevron row navigation scroll). */
@@ -622,6 +623,8 @@ export default function App() {
 
   const [documentScrollIos] = useState(isIosWebKitDocumentScroll);
   const [iosHeaderSpacerPx, setIosHeaderSpacerPx] = useState(0);
+  const [toolbarHeaderDisplay, setToolbarHeaderDisplay] = useState(null);
+  const [toolbarHeaderFading, setToolbarHeaderFading] = useState(false);
 
   useEffect(() => {
     if (documentScrollIos) {
@@ -664,6 +667,7 @@ export default function App() {
       if (savedRowsGlowClearRef.current) clearTimeout(savedRowsGlowClearRef.current);
       clearMinusRingTimersRef.current.forEach((id) => clearTimeout(id));
       clearMinusRingTimersRef.current = [];
+      if (toolbarHeaderFadeTimerRef.current) clearTimeout(toolbarHeaderFadeTimerRef.current);
       randomCascadeTimersRef.current.forEach((id) => {
         clearTimeout(id);
         clearInterval(id);
@@ -2072,6 +2076,46 @@ export default function App() {
   /** Date + jackpot in toolbar only when a winning row is selected (saved-only → blank). */
   const showHeaderDrawDateJackpot = canTurnOff && hasRowLikeSelection && currentRow >= 0;
   const nextDrawToolbarPlaceholderLines = nextDrawToolbarLines();
+  const toolbarHeaderTarget = useMemo(
+    () =>
+      showHeaderDrawDateJackpot && topDraw
+        ? {
+            key: `draw|${topDraw.date}|${topDraw.jackpot}`,
+            color: topRowColor,
+            letterSpacing: 1,
+            whiteSpace: undefined,
+            title: undefined,
+            align: "center",
+            primary: formatDrawDateJackpot(topDraw.date, topDraw.jackpot),
+            secondary: null
+          }
+        : {
+            key: `next|${nextDrawToolbarPlaceholderLines.dateAndJackpot}|${nextDrawToolbarPlaceholderLines.extras}`,
+            color: SAVED_LOCK_ICON_GREEN,
+            letterSpacing: 0.35,
+            whiteSpace: "normal",
+            title: "Upcoming Tue/Fri draw (placeholder date & jackpot until automated)",
+            align: "right",
+            primary: nextDrawToolbarPlaceholderLines.dateAndJackpot,
+            secondary: nextDrawToolbarPlaceholderLines.extras
+          },
+    [showHeaderDrawDateJackpot, topDraw, topRowColor, nextDrawToolbarPlaceholderLines]
+  );
+
+  useEffect(() => {
+    if (!toolbarHeaderDisplay) {
+      setToolbarHeaderDisplay(toolbarHeaderTarget);
+      return;
+    }
+    if (toolbarHeaderDisplay.key === toolbarHeaderTarget.key) return;
+    if (toolbarHeaderFadeTimerRef.current) clearTimeout(toolbarHeaderFadeTimerRef.current);
+    setToolbarHeaderFading(true);
+    toolbarHeaderFadeTimerRef.current = setTimeout(() => {
+      setToolbarHeaderDisplay(toolbarHeaderTarget);
+      requestAnimationFrame(() => setToolbarHeaderFading(false));
+      toolbarHeaderFadeTimerRef.current = null;
+    }, 45);
+  }, [toolbarHeaderTarget, toolbarHeaderDisplay]);
 
   const rowsScrollBottomPad =
     showPwaBottomRowNav && !pwaBottomNavHidden
@@ -2608,32 +2652,30 @@ export default function App() {
             <div
               style={{
                 justifySelf: "center",
-                textAlign: showHeaderDrawDateJackpot && topDraw ? "center" : undefined,
-                display: showHeaderDrawDateJackpot && topDraw ? undefined : "flex",
-                justifyContent: showHeaderDrawDateJackpot && topDraw ? undefined : "center",
+                textAlign: toolbarHeaderDisplay?.align === "center" ? "center" : undefined,
+                display: toolbarHeaderDisplay?.align === "center" ? undefined : "flex",
+                justifyContent: toolbarHeaderDisplay?.align === "center" ? undefined : "center",
                 minWidth: 0,
                 maxWidth: "100%",
                 fontSize: 14,
                 fontWeight: 500,
-                letterSpacing: showHeaderDrawDateJackpot ? 1 : 0.35,
+                letterSpacing: toolbarHeaderDisplay?.letterSpacing ?? 0.35,
                 textTransform: "none",
-                color: showHeaderDrawDateJackpot ? topRowColor : SAVED_LOCK_ICON_GREEN,
+                color: toolbarHeaderDisplay?.color ?? SAVED_LOCK_ICON_GREEN,
                 lineHeight: 1.25,
-                whiteSpace: showHeaderDrawDateJackpot && topDraw ? undefined : "normal",
-                textShadow: ROW_NUM_TEXT_SHADOW_IDLE
+                whiteSpace: toolbarHeaderDisplay?.whiteSpace,
+                textShadow: ROW_NUM_TEXT_SHADOW_IDLE,
+                opacity: toolbarHeaderFading ? 0 : 1,
+                transition: "opacity 45ms linear"
               }}
-              title={
-                showHeaderDrawDateJackpot
-                  ? undefined
-                  : "Upcoming Tue/Fri draw (placeholder date & jackpot until automated)"
-              }
+              title={toolbarHeaderDisplay?.title}
             >
-              {showHeaderDrawDateJackpot && topDraw ? (
-                formatDrawDateJackpot(topDraw.date, topDraw.jackpot)
+              {toolbarHeaderDisplay?.secondary == null ? (
+                toolbarHeaderDisplay?.primary
               ) : (
                 <div style={{ textAlign: "right" }}>
-                  <div>{nextDrawToolbarPlaceholderLines.dateAndJackpot}</div>
-                  <div>{nextDrawToolbarPlaceholderLines.extras}</div>
+                  <div>{toolbarHeaderDisplay?.primary}</div>
+                  <div>{toolbarHeaderDisplay?.secondary}</div>
                 </div>
               )}
             </div>
