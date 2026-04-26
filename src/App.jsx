@@ -613,7 +613,6 @@ export default function App() {
   /** "Number Frequency" title — scroll into view when a window is chosen or a digit is tapped. */
   const frequencyTitleRef = useRef(null);
   const toolbarClearScrollWinningTitleRef = useRef(false);
-  const toolbarHeaderFadeTimerRef = useRef(null);
   const scrollRootRef = useRef(null);
   const lastScrollTopPwaNavRef = useRef(-1);
   /** While true, PWA bottom nav ignores scroll deltas (chevron row navigation scroll). */
@@ -624,8 +623,6 @@ export default function App() {
 
   const [documentScrollIos] = useState(isIosWebKitDocumentScroll);
   const [iosHeaderSpacerPx, setIosHeaderSpacerPx] = useState(0);
-  const [toolbarHeaderDisplay, setToolbarHeaderDisplay] = useState(null);
-  const [toolbarHeaderFading, setToolbarHeaderFading] = useState(false);
 
   useEffect(() => {
     if (documentScrollIos) {
@@ -668,7 +665,6 @@ export default function App() {
       if (savedRowsGlowClearRef.current) clearTimeout(savedRowsGlowClearRef.current);
       clearMinusRingTimersRef.current.forEach((id) => clearTimeout(id));
       clearMinusRingTimersRef.current = [];
-      if (toolbarHeaderFadeTimerRef.current) clearTimeout(toolbarHeaderFadeTimerRef.current);
       randomCascadeTimersRef.current.forEach((id) => {
         clearTimeout(id);
         clearInterval(id);
@@ -2118,7 +2114,7 @@ export default function App() {
   /** Date + jackpot in toolbar only when a winning row is selected (saved-only → blank). */
   const showHeaderDrawDateJackpot = canTurnOff && hasRowLikeSelection && currentRow >= 0;
   const nextDrawToolbarPlaceholderLines = nextDrawToolbarLines();
-  const toolbarHeaderTarget = useMemo(
+  const toolbarHeader = useMemo(
     () =>
       showHeaderDrawDateJackpot && topDraw
         ? {
@@ -2143,21 +2139,6 @@ export default function App() {
           },
     [showHeaderDrawDateJackpot, topDraw, topRowColor, nextDrawToolbarPlaceholderLines]
   );
-
-  useEffect(() => {
-    if (!toolbarHeaderDisplay) {
-      setToolbarHeaderDisplay(toolbarHeaderTarget);
-      return;
-    }
-    if (toolbarHeaderDisplay.key === toolbarHeaderTarget.key) return;
-    if (toolbarHeaderFadeTimerRef.current) clearTimeout(toolbarHeaderFadeTimerRef.current);
-    setToolbarHeaderFading(true);
-    toolbarHeaderFadeTimerRef.current = setTimeout(() => {
-      setToolbarHeaderDisplay(toolbarHeaderTarget);
-      requestAnimationFrame(() => setToolbarHeaderFading(false));
-      toolbarHeaderFadeTimerRef.current = null;
-    }, 45);
-  }, [toolbarHeaderTarget, toolbarHeaderDisplay]);
 
   const rowsScrollBottomPad =
     showPwaBottomRowNav && !pwaBottomNavHidden
@@ -2694,30 +2675,29 @@ export default function App() {
             <div
               style={{
                 justifySelf: "center",
-                textAlign: toolbarHeaderDisplay?.align === "center" ? "center" : undefined,
-                display: toolbarHeaderDisplay?.align === "center" ? undefined : "flex",
-                justifyContent: toolbarHeaderDisplay?.align === "center" ? undefined : "center",
+                position: "relative",
+                textAlign: toolbarHeader.align === "center" ? "center" : undefined,
+                display: toolbarHeader.align === "center" ? undefined : "flex",
+                justifyContent: toolbarHeader.align === "center" ? undefined : "center",
                 minWidth: 0,
                 maxWidth: "100%",
                 fontSize: 14,
                 fontWeight: 500,
-                letterSpacing: toolbarHeaderDisplay?.letterSpacing ?? 0.35,
+                letterSpacing: toolbarHeader.letterSpacing ?? 0.35,
                 textTransform: "none",
-                color: toolbarHeaderDisplay?.color ?? SAVED_LOCK_ICON_GREEN,
+                color: toolbarHeader.color ?? SAVED_LOCK_ICON_GREEN,
                 lineHeight: 1.25,
-                whiteSpace: toolbarHeaderDisplay?.whiteSpace,
-                textShadow: ROW_NUM_TEXT_SHADOW_IDLE,
-                opacity: toolbarHeaderFading ? 0 : 1,
-                transition: "opacity 45ms linear"
+                whiteSpace: toolbarHeader.whiteSpace,
+                textShadow: ROW_NUM_TEXT_SHADOW_IDLE
               }}
-              title={toolbarHeaderDisplay?.title}
+              title={toolbarHeader.title}
             >
-              {toolbarHeaderDisplay?.secondary == null ? (
-                toolbarHeaderDisplay?.primary
+              {toolbarHeader.secondary == null ? (
+                toolbarHeader.primary
               ) : (
-                <div style={{ textAlign: "right" }}>
-                  <div>{toolbarHeaderDisplay?.primary}</div>
-                  <div>{toolbarHeaderDisplay?.secondary}</div>
+                <div style={{ textAlign: toolbarHeader.align === "right" ? "right" : "center" }}>
+                  <div>{toolbarHeader.primary}</div>
+                  <div>{toolbarHeader.secondary}</div>
                 </div>
               )}
             </div>
