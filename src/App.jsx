@@ -2404,7 +2404,7 @@ export default function App() {
                   const isBlocked =
                     manualLimitReached && !activeNums.has(n) && !randomNums.has(n) && !rowGlobalNums.has(n);
                   const labelColor = isBlocked
-                    ? "rgba(52,54,58,0.95)"
+                    ? UI_BG
                     : isOn
                       ? LIT_NUM_COLOR
                       : HONEY_HEX_LABEL;
