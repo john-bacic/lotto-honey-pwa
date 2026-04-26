@@ -2,35 +2,41 @@ import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } fr
 import * as THREE from "three";
 import { getDrawRows } from "./lib/draws";
 
-/** Base + honeycomb off-state: outer #212226, face #323339, text #757575 */
-const UI_BG = "#212226";
-const UI_CARD = "#323339";
-const UI_NUM_CELL_IDLE = "#323339";
-/** Bottom nav + pinned top (toolbar, honeycomb, save row) */
-const UI_NAV_BG = "rgba(45, 45, 50, 0.96)";
-const HONEY_HEX_FACE_RGBA = "rgba(50,51,57,0.98)";
-const HONEY_HEX_STROKE_RGBA = "rgba(42,43,49,0.95)";
-const HONEY_HEX_LABEL = "#757575";
-/** Toolbar accent (minus bar, inner hex stroke when row-selected, etc.) */
-const TOOLBAR_ACCENT_PINK = "rgba(255,80,128,0.98)";
-/** Saved rows locked — lock icons (matches ROW_COLORS mint #00ff8c) */
-const SAVED_LOCK_ICON_GREEN = "#00ff8c";
-/** Onion skin active — toolbar count hex outline (mint, not pink) */
-const ONION_ACTIVE_HEX_STROKE = "rgba(0, 255, 140, 0.55)";
-/** Light purple — frequency `Nx:` column + active toolbar frequency hex stroke and label. */
-const FREQUENCY_LIGHT_PURPLE = "rgba(170,150,255,0.9)";
-/** Saved rows when unlocked — same RGB as × / lock accent, lower alpha for fill */
-const SAVED_ROW_UNLOCKED_BG = "rgba(255,80,128,0.18)";
-/** Saved rows when locked — green (same hue as ROW_COLORS mint #00ff8c) */
-const SAVED_ROW_LOCKED_BG = "rgba(0, 255, 140, 0.14)";
-const HEX_FILL = 0x323339;
-const HEX_RING = 0x2a2b31;
+/**
+ * All themed colors flow through CSS custom properties on `<html data-theme="...">`.
+ * `var(--c-ink)` is an RGB triplet (`255,255,255` in dark, `0,0,0` in light), composed
+ * with literal alphas (e.g. `rgba(var(--c-ink),0.25)`) so foreground tints flip with theme.
+ */
+const UI_BG = "var(--c-bg)";
+const UI_CARD = "var(--c-card)";
+const UI_NUM_CELL_IDLE = "var(--c-num-cell-idle)";
+const UI_NAV_BG = "var(--c-nav-bg)";
+const HONEY_HEX_FACE_RGBA = "var(--c-hex-face)";
+const HONEY_HEX_STROKE_RGBA = "var(--c-hex-stroke)";
+const HONEY_HEX_LABEL = "var(--c-hex-label)";
+const TOOLBAR_ACCENT_PINK = "var(--c-pink)";
+const SAVED_LOCK_ICON_GREEN = "var(--c-lock-green)";
+const ONION_ACTIVE_HEX_STROKE = "var(--c-onion-stroke)";
+const FREQUENCY_LIGHT_PURPLE = "var(--c-freq-purple)";
+const SAVED_ROW_UNLOCKED_BG = "var(--c-saved-unlocked-bg)";
+const SAVED_ROW_LOCKED_BG = "var(--c-saved-locked-bg)";
+const HEX_EMPTY_FACE = "var(--c-hex-empty-face)";
+const HEX_FILL_DARK = 0x323339;
+const HEX_RING_DARK = 0x2a2b31;
+const HEX_FILL_LIGHT = 0xeef0f4;
+const HEX_RING_LIGHT = 0xf8f9fb;
+function hexFillForMode(mode) {
+  return mode === "light" ? HEX_FILL_LIGHT : HEX_FILL_DARK;
+}
+function hexRingForMode(mode) {
+  return mode === "light" ? HEX_RING_LIGHT : HEX_RING_DARK;
+}
 /** Idle row/honeycomb labels */
-const ROW_NUM_TEXT_SHADOW_IDLE = "0 1px 1px rgba(0,0,0,0.5)";
+const ROW_NUM_TEXT_SHADOW_IDLE = "var(--c-idle-text-shadow)";
 /** Lit row + honeycomb digits (not bonus): black, no shadow */
 const LIT_NUM_COLOR = "#000000";
 /** Bonus chip dashed border — lit digit matches this */
-const BONUS_DASH_RGBA = "rgba(255,255,255,0.2)";
+const BONUS_DASH_RGBA = "rgba(var(--c-ink),0.2)";
 
 /** Saved / Winning numbers list — shared label + gap above first row (matches rowsRef top pad). */
 const SECTION_LIST_LABEL_STYLE = {
@@ -40,7 +46,7 @@ const SECTION_LIST_LABEL_STYLE = {
   fontWeight: 300,
   letterSpacing: 3,
   textTransform: "uppercase",
-  color: "rgba(255,255,255,0.25)"
+  color: "rgba(var(--c-ink),0.25)"
 };
 const SECTION_LIST_ROWS_PADDING_TOP = 4;
 
@@ -414,8 +420,8 @@ function NavButton({ dir, arrowColor, onNav, dimmed = false }) {
       onPointerLeave={stopHold}
       onContextMenu={(e) => e.preventDefault()}
       style={{
-        background: dimmed ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.03)",
-        border: `1.5px solid ${dimmed ? "rgba(255,255,255,0.08)" : `${arrowColor}50`}`,
+        background: dimmed ? "rgba(var(--c-ink),0.015)" : "rgba(var(--c-ink),0.03)",
+        border: `1.5px solid ${dimmed ? "rgba(var(--c-ink),0.08)" : `${arrowColor}50`}`,
         width: 100,
         height: 42,
         borderRadius: 999,
@@ -432,7 +438,7 @@ function NavButton({ dir, arrowColor, onNav, dimmed = false }) {
         height="18"
         viewBox="0 0 24 24"
         fill="none"
-        stroke={dimmed ? "rgba(255,255,255,0.18)" : arrowColor}
+        stroke={dimmed ? "rgba(var(--c-ink),0.18)" : arrowColor}
         strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -443,7 +449,7 @@ function NavButton({ dir, arrowColor, onNav, dimmed = false }) {
   );
 }
 
-function LockIcon({ locked, color = "rgba(255,255,255,0.65)", size = 13 }) {
+function LockIcon({ locked, color = "rgba(var(--c-ink),0.65)", size = 13 }) {
   return (
     <svg
       width={size}
@@ -507,7 +513,7 @@ function OnionGlyphIcon({ off = false }) {
         height: 44,
         pointerEvents: "none",
         userSelect: "none",
-        color: off ? HONEY_HEX_LABEL : "rgba(255,255,255,0.55)"
+        color: off ? HONEY_HEX_LABEL : "rgba(var(--c-ink),0.55)"
       }}
       aria-hidden="true"
     >
@@ -531,7 +537,7 @@ function FrequencyGlyphIcon({ off = false }) {
         height: 44,
         pointerEvents: "none",
         userSelect: "none",
-        color: off ? HONEY_HEX_LABEL : "rgba(255,255,255,0.55)"
+        color: off ? HONEY_HEX_LABEL : "rgba(var(--c-ink),0.55)"
       }}
       aria-hidden="true"
     >
@@ -623,6 +629,17 @@ export default function App() {
 
   const [documentScrollIos] = useState(isIosWebKitDocumentScroll);
   const [iosHeaderSpacerPx, setIosHeaderSpacerPx] = useState(0);
+  const [themeMode, setThemeMode] = useState(() => {
+    if (typeof window === "undefined") return "dark";
+    try {
+      const stored = window.localStorage.getItem("lotto-honey-theme");
+      if (stored === "light" || stored === "dark") return stored;
+    } catch {
+      /* private mode / quota — fall through */
+    }
+    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) return "light";
+    return "dark";
+  });
 
   useEffect(() => {
     if (documentScrollIos) {
@@ -632,6 +649,19 @@ export default function App() {
       document.documentElement.classList.remove("doc-scroll-ios");
     };
   }, [documentScrollIos]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", themeMode);
+    try {
+      window.localStorage.setItem("lotto-honey-theme", themeMode);
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [themeMode]);
+
+  const toggleThemeMode = useCallback(() => {
+    setThemeMode((prev) => (prev === "light" ? "dark" : "light"));
+  }, []);
 
   useEffect(() => {
     function focusScrollSection() {
@@ -1671,12 +1701,18 @@ export default function App() {
     }
   }
 
-  const buildScene = useCallback((el, gRows, tc) => {
+  const buildScene = useCallback((el, gRows, tc, sceneThemeMode) => {
     if (sceneRef.current) {
       cancelAnimationFrame(sceneRef.current.raf);
       sceneRef.current.ren.dispose();
       if (el.contains(sceneRef.current.ren.domElement)) el.removeChild(sceneRef.current.ren.domElement);
     }
+    const SCENE_HEX_FILL = hexFillForMode(sceneThemeMode);
+    const SCENE_HEX_RING = hexRingForMode(sceneThemeMode);
+    /** Inner inset keyline (locked manual pick): black in light mode for contrast on bright row colors. */
+    const SCENE_INNER_RING_COLOR = sceneThemeMode === "light" ? 0x000000 : SCENE_HEX_FILL;
+    /** Lit honeycomb digits fade toward this idle gray during minus-clear. */
+    const SCENE_LABEL_IDLE_GRAY = sceneThemeMode === "light" ? 0x5a : 0x75;
 
     const cW = el.clientWidth || 360;
     const cH = CANVAS_H;
@@ -1746,17 +1782,17 @@ export default function App() {
     const pos = getPositions(gRows);
     const meshes = {};
     pos.forEach(({ num: n, x, y }) => {
-      const outMat = new THREE.MeshBasicMaterial({ color: HEX_RING });
+      const outMat = new THREE.MeshBasicMaterial({ color: SCENE_HEX_RING });
       const outMesh = new THREE.Mesh(outGeo, outMat);
       outMesh.position.set(x, y, 0);
       scene.add(outMesh);
 
-      const mat = new THREE.MeshBasicMaterial({ color: HEX_FILL });
+      const mat = new THREE.MeshBasicMaterial({ color: SCENE_HEX_FILL });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x, y, 1);
       scene.add(mesh);
 
-      const innerMat = new THREE.MeshBasicMaterial({ color: HEX_FILL, transparent: true, opacity: 0 });
+      const innerMat = new THREE.MeshBasicMaterial({ color: SCENE_INNER_RING_COLOR, transparent: true, opacity: 0 });
       const innerMesh = new THREE.Mesh(innerRingGeo, innerMat);
       innerMesh.position.set(x, y, 1.5);
       scene.add(innerMesh);
@@ -1792,8 +1828,8 @@ export default function App() {
 
     /** Single Three.js color buffer reused per frame to avoid GC churn. */
     const tmpColor = new THREE.Color();
-    const black = new THREE.Color(HEX_FILL);
-    const darkBorder = new THREE.Color(HEX_RING);
+    const black = new THREE.Color(SCENE_HEX_FILL);
+    const darkBorder = new THREE.Color(SCENE_HEX_RING);
 
     function loop() {
       state.raf = requestAnimationFrame(loop);
@@ -1812,8 +1848,8 @@ export default function App() {
             const mm = state.meshes[n];
             if (!mm) continue;
             mm.fadeMul = 0;
-            mm.mat.color.set(HEX_FILL);
-            mm.outMat.color.set(HEX_RING);
+            mm.mat.color.set(SCENE_HEX_FILL);
+            mm.outMat.color.set(SCENE_HEX_RING);
             if (wv.innerAtStart && wv.innerAtStart[n]) mm.innerMat.opacity = 0;
             const labelEl = honeyLabelElByNumRef.current[n];
             if (labelEl) labelEl.style.color = "";
@@ -1883,8 +1919,8 @@ export default function App() {
         if (labelEl) {
           labelEl.style.transform = `scale(${1 - waveDip})`;
           if (minusActive && wv.litAtStart[i]) {
-            /** Lit label is `LIT_NUM_COLOR` (#000); fade toward idle `HONEY_HEX_LABEL` (#757575). */
-            const c = Math.round(0x75 * (1 - labelMul));
+            /** Lit label is `LIT_NUM_COLOR` (#000); fade toward idle hex label gray for the active theme. */
+            const c = Math.round(SCENE_LABEL_IDLE_GRAY * (1 - labelMul));
             labelEl.style.color = `rgb(${c},${c},${c})`;
           } else if (labelEl.style.color) {
             labelEl.style.color = "";
@@ -1900,7 +1936,7 @@ export default function App() {
     const el = mountRef.current;
     if (!el) return;
     honeyMeshWaveRef.current = null;
-    buildScene(el, gridRows, totalCells);
+    buildScene(el, gridRows, totalCells, themeMode);
     return () => {
       honeyMeshWaveRef.current = null;
       if (!sceneRef.current) return;
@@ -1909,7 +1945,7 @@ export default function App() {
       if (el.contains(sceneRef.current.ren.domElement)) el.removeChild(sceneRef.current.ren.domElement);
       sceneRef.current = null;
     };
-  }, [buildScene, gridRows, totalCells]);
+  }, [buildScene, gridRows, totalCells, themeMode]);
 
   /** When the grid is shown again, sync drawing buffer size (canvas stays mounted; was off-screen). */
   useLayoutEffect(() => {
@@ -1924,8 +1960,8 @@ export default function App() {
   useEffect(() => {
     if (!sceneRef.current) return;
     const { meshes, tc } = sceneRef.current;
-    const black = new THREE.Color(HEX_FILL);
-    const darkBorder = new THREE.Color(HEX_RING);
+    const black = new THREE.Color(hexFillForMode(themeMode));
+    const darkBorder = new THREE.Color(hexRingForMode(themeMode));
     for (let n = 1; n <= tc; n += 1) {
       const h = meshes[n];
       if (!h) continue;
@@ -1936,15 +1972,15 @@ export default function App() {
         h.outMat.color.copy(new THREE.Color().copy(darkBorder).lerp(h.specBorder, b));
         h.tgt = 0.95 + b * 0.0;
       } else {
-        h.mat.color.set(HEX_FILL);
-        h.outMat.color.set(HEX_RING);
+        h.mat.color.set(hexFillForMode(themeMode));
+        h.outMat.color.set(hexRingForMode(themeMode));
         h.tgt = 1;
       }
       h.pulseTgt = justLitNums.has(n) ? 1 : 0;
       /** Inner keyline indicates only manual honeycomb picks, not row/saved global toggles. */
       h.innerMat.opacity = activeNums.has(n) ? 1 : 0;
     }
-  }, [numBrightness, totalCells, activeNums, rowGlobalNums, justLitNums, randomCascadeResync]);
+  }, [numBrightness, totalCells, activeNums, rowGlobalNums, justLitNums, randomCascadeResync, themeMode]);
 
   useEffect(() => {
     if (honeycombVisible) return;
@@ -2195,7 +2231,7 @@ export default function App() {
         paddingRight: "env(safe-area-inset-right, 0px)",
         background: UI_BG,
         fontFamily: "Outfit,sans-serif",
-        color: "rgba(255,255,255,0.92)",
+        color: "rgba(var(--c-ink),0.92)",
         userSelect: "none",
         WebkitUserSelect: "none",
         WebkitTouchCallout: "none"
@@ -2250,8 +2286,8 @@ export default function App() {
           backdropFilter: "blur(3px)",
           WebkitBackdropFilter: "blur(3px)",
           paddingTop: "env(safe-area-inset-top, 0px)",
-          borderBottom: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: "0 4px 14px rgba(0,0,0,0.28)"
+          borderBottom: "1px solid rgba(var(--c-ink),0.1)",
+          boxShadow: "var(--c-section-shadow)"
         }}
       >
         <div
@@ -2268,10 +2304,81 @@ export default function App() {
             flexShrink: 0
           }}
         >
-          <div
-            style={{ justifySelf: "start", width: 44, height: 44, flexShrink: 0, alignSelf: "center" }}
-            aria-hidden="true"
-          />
+          <div style={{ justifySelf: "start", alignSelf: "center" }}>
+            <button
+              type="button"
+              onClick={toggleThemeMode}
+              aria-label={themeMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              title={themeMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              style={{
+                position: "relative",
+                width: 44,
+                height: 44,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                flexShrink: 0
+              }}
+            >
+              <svg
+                width="44"
+                height="44"
+                viewBox="0 0 100 100"
+                style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                aria-hidden="true"
+              >
+                <polygon
+                  points="50,2 93,25 93,75 50,98 7,75 7,25"
+                  fill={HONEY_HEX_FACE_RGBA}
+                  stroke={HONEY_HEX_STROKE_RGBA}
+                  strokeWidth="4"
+                />
+              </svg>
+              {themeMode === "light" ? (
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={HONEY_HEX_LABEL}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ position: "relative", zIndex: 1 }}
+                  aria-hidden="true"
+                >
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" fill={HONEY_HEX_LABEL} />
+                </svg>
+              ) : (
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={HONEY_HEX_LABEL}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ position: "relative", zIndex: 1 }}
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="4" fill={HONEY_HEX_LABEL} />
+                  <line x1="12" y1="2" x2="12" y2="5" />
+                  <line x1="12" y1="19" x2="12" y2="22" />
+                  <line x1="4.22" y1="4.22" x2="6.34" y2="6.34" />
+                  <line x1="17.66" y1="17.66" x2="19.78" y2="19.78" />
+                  <line x1="2" y1="12" x2="5" y2="12" />
+                  <line x1="19" y1="12" x2="22" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="6.34" y2="17.66" />
+                  <line x1="17.66" y1="6.34" x2="19.78" y2="4.22" />
+                </svg>
+              )}
+            </button>
+          </div>
 
           <div style={{ justifySelf: "center" }}>
             <button
@@ -2302,7 +2409,7 @@ export default function App() {
               >
                 <polygon
                   points="50,2 93,25 93,75 50,98 7,75 7,25"
-                  fill={honeycombVisible ? HONEY_HEX_FACE_RGBA : "rgba(255,255,255,0.05)"}
+                  fill={honeycombVisible ? HONEY_HEX_FACE_RGBA : "rgba(var(--c-ink),0.05)"}
                   stroke={HONEY_HEX_STROKE_RGBA}
                   strokeWidth="4"
                 />
@@ -2338,7 +2445,7 @@ export default function App() {
               >
                 <polygon
                   points="50,2 93,25 93,75 50,98 7,75 7,25"
-                  fill={canTurnOff ? HONEY_HEX_FACE_RGBA : "rgba(255,255,255,0.05)"}
+                  fill={canTurnOff ? HONEY_HEX_FACE_RGBA : "rgba(var(--c-ink),0.05)"}
                   stroke={hasRowLikeSelection ? TOOLBAR_ACCENT_PINK : HONEY_HEX_STROKE_RGBA}
                   strokeWidth="4"
                 />
@@ -2404,7 +2511,7 @@ export default function App() {
                   const isBlocked =
                     manualLimitReached && !activeNums.has(n) && !randomNums.has(n) && !rowGlobalNums.has(n);
                   const labelColor = isBlocked
-                    ? UI_BG
+                    ? "var(--c-hex-label-blocked)"
                     : isOn
                       ? LIT_NUM_COLOR
                       : HONEY_HEX_LABEL;
@@ -2510,7 +2617,7 @@ export default function App() {
             fontWeight: 300,
             letterSpacing: 3,
             textTransform: "uppercase",
-            color: "rgba(255,255,255,0.25)"
+            color: "rgba(var(--c-ink),0.25)"
           }}
         >
           <div
@@ -2583,7 +2690,7 @@ export default function App() {
                       >
                         <polygon
                           points="50,2 93,25 93,75 50,98 7,75 7,25"
-                          fill="rgba(255,255,255,0.05)"
+                          fill="rgba(var(--c-ink),0.05)"
                           stroke={HONEY_HEX_STROKE_RGBA}
                           strokeWidth="4"
                         />
@@ -2663,7 +2770,7 @@ export default function App() {
                       >
                         <polygon
                           points="50,2 93,25 93,75 50,98 7,75 7,25"
-                          fill="rgba(255,255,255,0.05)"
+                          fill="rgba(var(--c-ink),0.05)"
                           stroke={HONEY_HEX_STROKE_RGBA}
                           strokeWidth="4"
                         />
@@ -2713,7 +2820,9 @@ export default function App() {
                 color: toolbarHeader.color ?? SAVED_LOCK_ICON_GREEN,
                 lineHeight: 1.25,
                 whiteSpace: toolbarHeader.whiteSpace,
-                textShadow: ROW_NUM_TEXT_SHADOW_IDLE
+                textShadow: ROW_NUM_TEXT_SHADOW_IDLE,
+                /** Light mode: bright row colors wash out on the white pinned-bg, so darken in place. */
+                filter: themeMode === "light" ? "brightness(0.62) saturate(1.18)" : undefined
               }}
               title={toolbarHeader.title}
             >
@@ -3078,7 +3187,7 @@ export default function App() {
                             fontSize: 13,
                             fontWeight: 400,
                             letterSpacing: "-0.01em",
-                            color: showChip ? "#000000" : isZero ? TOOLBAR_ACCENT_PINK : "rgba(120,100,230,0.9)",
+                            color: showChip ? "#000000" : isZero ? TOOLBAR_ACCENT_PINK : "rgba(var(--c-freq-chip-ink),0.9)",
                             background: showChip ? themeRgba(nColor, chipFillAlpha) : "transparent",
                             lineHeight: 1,
                             fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
@@ -3090,7 +3199,7 @@ export default function App() {
                         {idx < nums.length - 1 ? (
                           <span
                             style={{
-                              color: "rgba(120,100,230,0.85)",
+                              color: "rgba(var(--c-freq-chip-ink),0.85)",
                               fontSize: 14,
                               lineHeight: 1,
                               fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
@@ -3180,7 +3289,7 @@ export default function App() {
                     padding: "7px 22px 7px 14px",
                     marginBottom: 4,
                     background: savedRowBg,
-                    border: `2px solid ${isCurrent ? color : "rgba(255,255,255,0.06)"}`,
+                    border: `2px solid ${isCurrent ? color : "rgba(var(--c-ink),0.06)"}`,
                     borderRadius: 8,
                     cursor: "pointer"
                   }}
@@ -3194,7 +3303,7 @@ export default function App() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        background: isCurrent ? color : "rgba(255,255,255,0.08)"
+                        background: isCurrent ? color : "rgba(var(--c-ink),0.08)"
                       }}
                     >
                       <span style={{ color: "#000000", opacity: 0.5, fontSize: 11, fontWeight: 700, lineHeight: 1 }}>
@@ -3226,7 +3335,7 @@ export default function App() {
                               justifyContent: "center",
                               fontSize: 14,
                               fontWeight: 600,
-                              color: numOn ? LIT_NUM_COLOR : "rgba(255,255,255,0.75)",
+                              color: numOn ? LIT_NUM_COLOR : "rgba(var(--c-ink),0.75)",
                               background: numOn ? themeRgba(th, 0.15 + b * 0.85) : "transparent",
                               textShadow: numOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
                               transition: "all 0.25s",
@@ -3250,9 +3359,9 @@ export default function App() {
                       height: 24,
                       borderRadius: 999,
                       border: savedLocked
-                        ? "1px solid rgba(255,255,255,0.12)"
+                        ? "1px solid rgba(var(--c-ink),0.12)"
                         : "1px solid rgba(255, 80, 128, 0.35)",
-                      background: savedLocked ? "rgba(255,255,255,0.03)" : "rgba(255, 80, 128, 0.08)",
+                      background: savedLocked ? "rgba(var(--c-ink),0.03)" : "rgba(255,80,128,0.08)",
                       color: savedLocked ? SAVED_LOCK_ICON_GREEN : TOOLBAR_ACCENT_PINK,
                       display: "flex",
                       alignItems: "center",
@@ -3293,7 +3402,7 @@ export default function App() {
               fontWeight: 500,
               letterSpacing: 1.2,
               textTransform: "none",
-              color: "rgba(255,255,255,0.38)"
+              color: "rgba(var(--c-ink),0.38)"
             }}
             title="Commit for this build (set on each Vercel deploy). Locally: latest main from GitHub, no cache."
           >
@@ -3340,7 +3449,7 @@ export default function App() {
                 marginBottom: 4,
                 background: isOnion ? `${color}14` : UI_CARD,
                 border: `2px solid ${
-                  isCurrent ? color : isOnion ? `${color}40` : activeCount > 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)"
+                  isCurrent ? color : isOnion ? `${color}40` : activeCount > 0 ? "rgba(var(--c-ink),0.1)" : "rgba(var(--c-ink),0.04)"
                 }`,
                 borderRadius: 8,
                 cursor: "pointer",
@@ -3357,7 +3466,7 @@ export default function App() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: isOnion ? color : "rgba(255,255,255,0.05)"
+                    background: isOnion ? color : "rgba(var(--c-ink),0.05)"
                   }}
                 >
                   <span style={{ color: "#000000", opacity: 0.5, fontSize: 10, fontWeight: 600, lineHeight: 1 }}>
@@ -3412,7 +3521,7 @@ export default function App() {
                           justifyContent: "center",
                           fontSize: 14,
                           fontWeight: 600,
-                          color: bonusOn ? LIT_NUM_COLOR : isCurrent ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.175)",
+                          color: bonusOn ? LIT_NUM_COLOR : isCurrent ? "rgba(var(--c-ink),0.4)" : "rgba(var(--c-ink),0.175)",
                           background: bonusOn
                             ? themeRgba(thBonus, 0.15 + bBonus * 0.85)
                             : isCurrent
@@ -3434,7 +3543,7 @@ export default function App() {
                 style={{
                   fontSize: 10,
                   fontWeight: 600,
-                  color: "rgba(255,255,255,0.38)",
+                  color: "rgba(var(--c-ink),0.38)",
                   flexShrink: 0,
                   width: 24,
                   textAlign: "right",
@@ -3461,7 +3570,7 @@ export default function App() {
               zIndex: 20,
               paddingBottom: "env(safe-area-inset-bottom, 0px)",
               background: UI_NAV_BG,
-              borderTop: "1px solid rgba(255,255,255,0.1)",
+              borderTop: "1px solid rgba(var(--c-ink),0.1)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
               transform: pwaBottomNavHidden ? "translateY(100%)" : "translateY(0)",
@@ -3522,7 +3631,7 @@ export default function App() {
                     <span style={{ fontSize: 12, fontWeight: 400, color: HONEY_HEX_LABEL }}>/ {ROWS.length}</span>
                   </>
                 ) : (
-                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>-</span>
+                  <span style={{ fontSize: 11, color: "rgba(var(--c-ink),0.2)" }}>-</span>
                 )}
               </div>
               <NavButton dir={1} arrowColor={arrowColor} onNav={bottomNavArrowNav} dimmed={atBottomBoundary} />
