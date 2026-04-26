@@ -581,6 +581,7 @@ export default function App() {
   const mountRef = useRef(null);
   const randomToolbarBtnRef = useRef(null);
   const [randomToolbarLiftY, setRandomToolbarLiftY] = useState(0);
+  const randomToolbarLiftYRef = useRef(0);
   /** Slater-style random cascade: staggered cell flashes then staged reveal (see `pickRandomManual`). */
   const randomCascadeTimersRef = useRef([]);
   const randomCascadeLockRef = useRef(false);
@@ -1020,6 +1021,7 @@ export default function App() {
 
   useLayoutEffect(() => {
     if (!honeycombVisible) {
+      randomToolbarLiftYRef.current = 0;
       setRandomToolbarLiftY(0);
       return undefined;
     }
@@ -1036,8 +1038,13 @@ export default function App() {
       const rCanvas = canvasEl.getBoundingClientRect();
       const rBtn = btn.getBoundingClientRect();
       const targetBottom = rCanvas.top + B;
-      const delta = rBtn.bottom - targetBottom;
-      setRandomToolbarLiftY(-Math.round(delta));
+      /** Subtract any currently applied lift so we always measure from the button's natural position. */
+      const currentLift = randomToolbarLiftYRef.current;
+      const naturalBtnBottom = rBtn.bottom - currentLift;
+      const newLift = -Math.round(naturalBtnBottom - targetBottom);
+      if (newLift === currentLift) return;
+      randomToolbarLiftYRef.current = newLift;
+      setRandomToolbarLiftY(newLift);
     };
     const scheduleMeasure = () => {
       requestAnimationFrame(() => {
@@ -1045,15 +1052,30 @@ export default function App() {
       });
     };
     scheduleMeasure();
+    /** iOS PWA layout often settles late (safe-area / sticky); poll a few frames. */
+    const followUpTimers = [80, 200, 480, 1000].map((ms) =>
+      setTimeout(scheduleMeasure, ms)
+    );
     ro = new ResizeObserver(() => scheduleMeasure());
     ro.observe(el);
     window.addEventListener("resize", scheduleMeasure);
+    window.addEventListener("orientationchange", scheduleMeasure);
     return () => {
       cancelled = true;
+      followUpTimers.forEach((id) => clearTimeout(id));
       if (ro) ro.disconnect();
       window.removeEventListener("resize", scheduleMeasure);
+      window.removeEventListener("orientationchange", scheduleMeasure);
     };
-  }, [honeycombVisible, gridRows, labelPos]);
+  }, [
+    honeycombVisible,
+    gridRows,
+    labelPos,
+    iosHeaderSpacerPx,
+    activeNums.size,
+    randomNums.size,
+    savedRows.length
+  ]);
 
   const activeRowList = useMemo(() => {
     if (currentRow < 0) return [];
@@ -1787,6 +1809,20 @@ export default function App() {
       /** Smooth fade window per cell starting when wave reaches it; finishes well inside wave tail. */
       const minusFadeMs = 200;
       if (wv && elapsed > honeyWaveTotalDurationMs(wv.maxD)) {
+        /** On the frame the minus-clear wave ends, snap any previously lit cell back to base. */
+        if (wv.minusClear && wv.litAtStart) {
+          for (let n = 1; n <= tc; n += 1) {
+            if (!wv.litAtStart[n]) continue;
+            const mm = state.meshes[n];
+            if (!mm) continue;
+            mm.fadeMul = 0;
+            mm.mat.color.set(HEX_FILL);
+            mm.outMat.color.set(HEX_RING);
+            if (wv.innerAtStart && wv.innerAtStart[n]) mm.innerMat.opacity = 0;
+            const labelEl = honeyLabelElByNumRef.current[n];
+            if (labelEl) labelEl.style.color = "";
+          }
+        }
         honeyMeshWaveRef.current = null;
       }
       for (let i = 1; i <= tc; i += 1) {
@@ -1819,15 +1855,21 @@ export default function App() {
           const wasInner = wv.innerAtStart && wv.innerAtStart[i] ? 1 : 0;
           const d = wv.distMap[i];
           let target = 1;
+          let snapToZero = false;
           if (baseB > 0 && d !== undefined) {
             const tFade = elapsed - d * HONEY_WAVE_HOP_MS;
             if (tFade > 0) {
               /** Ease-out: smooth, slightly front-loaded fade as the wave passes through the cell. */
               const t = Math.min(1, tFade / minusFadeMs);
               target = 1 - Math.sin((t * Math.PI) / 2);
+              if (t >= 1) snapToZero = true;
             }
           }
-          m.fadeMul += (target - m.fadeMul) * 0.32;
+          if (snapToZero) {
+            m.fadeMul = 0;
+          } else {
+            m.fadeMul += (target - m.fadeMul) * 0.32;
+          }
           if (baseB > 0) {
             const effB = baseB * m.fadeMul;
             tmpColor.copy(black).lerp(m.specColor, effB);
