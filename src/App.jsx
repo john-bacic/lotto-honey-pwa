@@ -3065,8 +3065,8 @@ export default function App() {
                             }
                           }}
                           style={{
-                            width: showChip ? 24 : "auto",
-                            minWidth: showChip ? 24 : 21,
+                            width: "auto",
+                            minWidth: 21,
                             height: 24,
                             padding: "0 0",
                             borderRadius: showChip ? 7 : 0,
