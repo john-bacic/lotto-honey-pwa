@@ -302,6 +302,50 @@ function getGridSize(gridRows) {
   };
 }
 
+/**
+ * Distance from top of honey canvas to bottom tip of outer hex on the bottom row
+ * (same projection as `buildScene` / `labelPos`).
+ */
+function honeyBottomOuterHexBottomFromCanvasTopPx(gridRows, canvasW, canvasH) {
+  const pad = 12;
+  const gs = getGridSize(gridRows);
+  const gA = gs.w / gs.h;
+  const cW = Math.max(120, canvasW);
+  const cH = canvasH;
+  const cA = cW / cH;
+  let camW;
+  let camH;
+  if (cA > gA) {
+    camH = gs.h + pad * 2;
+    camW = camH * cA;
+  } else {
+    camW = gs.w + pad * 2;
+    camH = camW / cA;
+  }
+  const cam = new THREE.OrthographicCamera(-camW / 2, camW / 2, camH / 2, -camH / 2, 1, 100);
+  cam.position.z = 10;
+  cam.updateProjectionMatrix();
+  const pos = getPositions(gridRows);
+  let nFirstBottom = 1;
+  for (let i = 0; i < gridRows.length - 1; i += 1) nFirstBottom += gridRows[i];
+  const p = pos.find((x) => x.num === nFirstBottom);
+  if (!p) return cH * 0.9;
+  const outR = HEX_R + 1.8;
+  /** Vertex at angle −π/2 is local (0, −R): bottom tip in Three y-up (matches `Shape` loop). */
+  const tmp = new THREE.Vector3(p.x, p.y - outR, 1);
+  tmp.project(cam);
+  return ((-tmp.y + 1) / 2) * cH;
+}
+
+/** Fisher–Yates shuffle (same pattern as Slater `shuffleArray`). */
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 /** Hex cells sharing an edge with `num` in the current grid (uses same geometry as `getPositions`). */
 function getAdjacentNums(num, gridRows) {
   const pos = getPositions(gridRows);
@@ -500,6 +544,8 @@ function FrequencyGlyphIcon({ off = false }) {
 
 export default function App() {
   const [activeNums, setActiveNums] = useState(new Set());
+  /** Randomly generated picks (no inset keyline). */
+  const [randomNums, setRandomNums] = useState(() => new Set());
   const [currentRow, setCurrentRow] = useState(0);
   const [selectedSavedId, setSelectedSavedId] = useState(null);
   const [savedRows, setSavedRows] = useState([]);
@@ -533,6 +579,21 @@ export default function App() {
   const [onionIdx, setOnionIdx] = useState(0);
   const [frequencyIdx, setFrequencyIdx] = useState(0);
   const mountRef = useRef(null);
+  const randomToolbarBtnRef = useRef(null);
+  const [randomToolbarLiftY, setRandomToolbarLiftY] = useState(0);
+  /** Slater-style random cascade: staggered cell flashes then staged reveal (see `pickRandomManual`). */
+  const randomCascadeTimersRef = useRef([]);
+  const randomCascadeLockRef = useRef(false);
+  const randomCascadeRevertRef = useRef(null);
+  const [randomCascadeBusy, setRandomCascadeBusy] = useState(false);
+  const [randomCascadePhaseOneActive, setRandomCascadePhaseOneActive] = useState(false);
+  const [randomCascadeRingActive, setRandomCascadeRingActive] = useState(false);
+  const [randomCascadeSlowing, setRandomCascadeSlowing] = useState(false);
+  const [randomCascadeRingFading, setRandomCascadeRingFading] = useState(false);
+  const [randomCascadeSpinMs, setRandomCascadeSpinMs] = useState(1250);
+  const [randomCascadeRampMs, setRandomCascadeRampMs] = useState(1000);
+  const [randomCascadeGlowHue, setRandomCascadeGlowHue] = useState(0);
+  const [randomCascadeResync, setRandomCascadeResync] = useState(0);
   const sceneRef = useRef(null);
   /** Manual honeycomb tap: scale-down BFS wave — outward when adding a #, inward when removing. */
   const honeyMeshWaveRef = useRef(null);
@@ -603,6 +664,12 @@ export default function App() {
       if (savedRowsGlowClearRef.current) clearTimeout(savedRowsGlowClearRef.current);
       clearMinusRingTimersRef.current.forEach((id) => clearTimeout(id));
       clearMinusRingTimersRef.current = [];
+      randomCascadeTimersRef.current.forEach((id) => {
+        clearTimeout(id);
+        clearInterval(id);
+      });
+      randomCascadeTimersRef.current = [];
+      randomCascadeLockRef.current = false;
     };
   }, []);
 
@@ -641,6 +708,12 @@ export default function App() {
     if (!savedOpen) return;
     setSavedLocked(true);
   }, [savedOpen]);
+
+  /** Selecting any winning/saved row drops random picks; only manual locks persist across row views. */
+  useEffect(() => {
+    if (currentRow < 0 && selectedSavedId == null) return;
+    setRandomNums((prev) => (prev.size > 0 ? new Set() : prev));
+  }, [currentRow, selectedSavedId]);
 
   useLayoutEffect(() => {
     if (!documentScrollIos) return undefined;
@@ -940,6 +1013,44 @@ export default function App() {
 
   const gridRows = gridMode === 52 ? GRID_52 : GRID_50;
   const totalCells = gridMode === 52 ? 52 : 50;
+
+  useLayoutEffect(() => {
+    if (!honeycombVisible) {
+      setRandomToolbarLiftY(0);
+      return undefined;
+    }
+    const el = mountRef.current;
+    if (!el) return undefined;
+    let ro = null;
+    let cancelled = false;
+    const measureRandomLift = () => {
+      if (cancelled) return;
+      const canvasEl = mountRef.current;
+      const btn = randomToolbarBtnRef.current;
+      if (!canvasEl || !btn || canvasEl.clientWidth < 20) return;
+      const B = honeyBottomOuterHexBottomFromCanvasTopPx(gridRows, canvasEl.clientWidth, CANVAS_H);
+      const rCanvas = canvasEl.getBoundingClientRect();
+      const rBtn = btn.getBoundingClientRect();
+      const targetBottom = rCanvas.top + B;
+      const delta = rBtn.bottom - targetBottom;
+      setRandomToolbarLiftY(-Math.round(delta));
+    };
+    const scheduleMeasure = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(measureRandomLift);
+      });
+    };
+    scheduleMeasure();
+    ro = new ResizeObserver(() => scheduleMeasure());
+    ro.observe(el);
+    window.addEventListener("resize", scheduleMeasure);
+    return () => {
+      cancelled = true;
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", scheduleMeasure);
+    };
+  }, [honeycombVisible, gridRows, labelPos]);
+
   const activeRowList = useMemo(() => {
     if (currentRow < 0) return [];
     const count = Math.max(onionCount, 1);
@@ -1001,6 +1112,9 @@ export default function App() {
       activeNums.forEach((n) => {
         if (n <= totalCells) map[n] = { brightness: 1 };
       });
+      randomNums.forEach((n) => {
+        if (n <= totalCells) map[n] = { brightness: 1 };
+      });
       activeRowList.forEach(({ ri, depth }) => {
         const b = onionInnerBrightnessForDepth(depth, onionCount);
         ROWS[ri].nums.forEach((n) => {
@@ -1020,6 +1134,9 @@ export default function App() {
       return map;
     }
     activeNums.forEach((n) => {
+      if (n <= totalCells) map[n] = { brightness: 1 };
+    });
+    randomNums.forEach((n) => {
       if (n <= totalCells) map[n] = { brightness: 1 };
     });
     rowGlobalNums.forEach((n) => {
@@ -1056,7 +1173,7 @@ export default function App() {
         });
       }
       selectionNums.forEach((n) => {
-        const litByManual = activeNums.has(n) || rowGlobalNums.has(n);
+        const litByManual = activeNums.has(n) || randomNums.has(n) || rowGlobalNums.has(n);
         if (!selectionRevealNums.has(n) && !litByManual) delete map[n];
       });
     }
@@ -1066,6 +1183,7 @@ export default function App() {
     honeycombVisible,
     rowGlobalNums,
     activeNums,
+    randomNums,
     activeRowList,
     onionCount,
     totalCells,
@@ -1122,8 +1240,13 @@ export default function App() {
   }, [numBrightness, totalCells, currentRow, selectedSavedId, onionCount]);
 
   const anyActive = Object.keys(numBrightness).length > 0;
-  const manualCount = activeNums.size;
-  const manualLimitReached = manualCount >= 7;
+  const selectedCount = useMemo(() => {
+    const merged = new Set(activeNums);
+    randomNums.forEach((n) => merged.add(n));
+    return merged.size;
+  }, [activeNums, randomNums]);
+  const manualCount = selectedCount;
+  const manualLimitReached = selectedCount >= 7;
 
   /** BFS scale wave on honeycomb meshes + labels (`inward` = toggling off / contracting). */
   function startHoneycombMeshWave(n, inward) {
@@ -1142,7 +1265,7 @@ export default function App() {
       const next = new Set(prev);
       if (next.has(n)) {
         next.delete(n);
-      } else if (next.size < 7) {
+      } else if (selectedCount < 7) {
         next.add(n);
         /** Adding a new number arms the save-button rotating rim. */
         setHasUnsavedManualAdd(true);
@@ -1151,9 +1274,134 @@ export default function App() {
     });
   }
 
+  function pickRandomManual() {
+    if (randomCascadeLockRef.current) return;
+
+    /** Reset any row/saved toggles; keep only manual locked picks as the base. */
+    setCurrentRow(-1);
+    setSelectedSavedId(null);
+    setRowGlobalNums(new Set());
+
+    const manualLocked = Array.from(activeNums).filter((n) => n >= 1 && n <= totalCells);
+    const manualLockedSet = new Set(manualLocked);
+    const needRandom = Math.max(0, 7 - manualLockedSet.size);
+    const pool = Array.from({ length: totalCells }, (_, i) => i + 1).filter((n) => !manualLockedSet.has(n));
+    shuffleInPlace(pool);
+    const finalRandom = pool.slice(0, needRandom).sort((a, b) => a - b);
+
+    if (!honeycombVisible) {
+      setRandomNums(new Set(finalRandom));
+      setHasUnsavedManualAdd(true);
+      return;
+    }
+
+    /** Slater `toggleRandomSevenButtons`: shuffle all cells, stagger 10ms, 2×200ms color pulse each, then reveal at 100ms steps. */
+    randomCascadeLockRef.current = true;
+    randomCascadeRevertRef.current = { manual: new Set(activeNums), random: new Set(randomNums) };
+    setRandomCascadeBusy(true);
+    setRandomCascadePhaseOneActive(true);
+    setRandomCascadeRingActive(true);
+    setRandomCascadeSlowing(true);
+    setRandomCascadeRingFading(false);
+    setRandomCascadeSpinMs(1100);
+    setRandomNums(new Set());
+    const phaseOneMs = (Math.max(0, totalCells - 1) * 10) + 600;
+    const phaseTwoMs = Math.max(0, finalRandom.length - 1) * 100;
+    setRandomCascadeRampMs(Math.max(350, phaseOneMs + phaseTwoMs));
+
+    const flashHue = Math.random();
+    setRandomCascadeGlowHue(Math.round(flashHue * 360));
+    const flashFill = new THREE.Color().setHSL(flashHue, 1, 0.62);
+    const flashRing = new THREE.Color().setHSL(flashHue, 1, 0.28);
+    const shuffled = shuffleInPlace(Array.from({ length: totalCells }, (_, i) => i + 1));
+    let completed = 0;
+
+    function pushCascadeTimer(id) {
+      randomCascadeTimersRef.current.push(id);
+    }
+
+    function onCellCascadeDone() {
+      completed += 1;
+      if (completed < totalCells) return;
+      setRandomCascadePhaseOneActive(false);
+      randomCascadeRevertRef.current = null;
+      const sorted = [...finalRandom];
+      const preRevealSlowdownMs = 0;
+      sorted.forEach((n, order) => {
+        pushCascadeTimer(
+          setTimeout(() => {
+            setRandomNums((prev) => {
+              const next = new Set(prev);
+              next.add(n);
+              return next;
+            });
+          }, preRevealSlowdownMs + order * 100)
+        );
+      });
+      setHasUnsavedManualAdd(true);
+      const lastRevealMs = sorted.length > 0 ? preRevealSlowdownMs + (sorted.length - 1) * 100 : preRevealSlowdownMs;
+      const unlockAfter = lastRevealMs + 120;
+      const fadeLeadMs = 420;
+      const fadeStartMs = Math.max(0, unlockAfter - fadeLeadMs);
+      pushCascadeTimer(
+        setTimeout(() => {
+          setRandomCascadeRingFading(true);
+        }, fadeStartMs)
+      );
+      pushCascadeTimer(
+        setTimeout(() => {
+          randomCascadeLockRef.current = false;
+          setRandomCascadeRingFading(false);
+          setRandomCascadePhaseOneActive(false);
+          setRandomCascadeRingActive(false);
+          setRandomCascadeSlowing(false);
+          setRandomCascadeBusy(false);
+        }, unlockAfter)
+      );
+    }
+
+    shuffled.forEach((n, index) => {
+      pushCascadeTimer(
+        setTimeout(() => {
+          const st = sceneRef.current;
+          const m = st?.meshes?.[n];
+          if (!m) {
+            onCellCascadeDone();
+            return;
+          }
+          const origMat = m.mat.color.clone();
+          const origOut = m.outMat.color.clone();
+          let flashesDone = 0;
+          const iv = setInterval(() => {
+            if (flashesDone < 2) {
+              m.mat.color.copy(flashFill);
+              m.outMat.color.copy(flashRing);
+              flashesDone += 1;
+            } else {
+              clearInterval(iv);
+              m.mat.color.copy(origMat);
+              m.outMat.color.copy(origOut);
+              onCellCascadeDone();
+            }
+          }, 200);
+          pushCascadeTimer(iv);
+        }, index * 10)
+      );
+    });
+  }
+
   function saveManualRow() {
-    if (activeNums.size === 0) return;
-    const nums = Array.from(activeNums).sort((a, b) => a - b);
+    const merged = new Set(activeNums);
+    randomNums.forEach((n) => merged.add(n));
+    if (merged.size === 0) return;
+    setSavedLocked(true);
+    setSavedRowsGlowMint(true);
+    setSavedRowsGlow(false);
+    if (savedRowsGlowClearRef.current) {
+      clearTimeout(savedRowsGlowClearRef.current);
+      savedRowsGlowClearRef.current = null;
+    }
+    const nums = Array.from(merged).sort((a, b) => a - b);
     const signature = nums.join("-");
     const alreadySaved = savedRows.some((row) => row.nums.join("-") === signature);
     if (alreadySaved) {
@@ -1230,6 +1478,7 @@ export default function App() {
         toolbarClearScrollWinningTitleRef.current = true;
       }
       setActiveNums(new Set());
+      setRandomNums(new Set());
       setRowGlobalNums(new Set());
       setHasUnsavedManualAdd(false);
       setCurrentRow(-1);
@@ -1262,6 +1511,7 @@ export default function App() {
       minusWaveClearMetaRef.current = null;
       /** Cells already faded to dark inside the loop — flushing state here doesn't visibly jump. */
       setActiveNums(new Set());
+      setRandomNums(new Set());
       setRowGlobalNums(new Set());
       setHasUnsavedManualAdd(false);
       if (hadRowLikeSelection) {
@@ -1652,7 +1902,51 @@ export default function App() {
       /** Inner keyline indicates only manual honeycomb picks, not row/saved global toggles. */
       h.innerMat.opacity = activeNums.has(n) ? 1 : 0;
     }
-  }, [numBrightness, totalCells, activeNums, rowGlobalNums, justLitNums]);
+  }, [numBrightness, totalCells, activeNums, rowGlobalNums, justLitNums, randomCascadeResync]);
+
+  useEffect(() => {
+    if (honeycombVisible) return;
+    if (!randomCascadeLockRef.current && randomCascadeTimersRef.current.length === 0) return;
+    randomCascadeTimersRef.current.forEach((id) => {
+      clearTimeout(id);
+      clearInterval(id);
+    });
+    randomCascadeTimersRef.current = [];
+    randomCascadeLockRef.current = false;
+    setRandomCascadeRingFading(false);
+    setRandomCascadePhaseOneActive(false);
+    setRandomCascadeRingActive(false);
+    setRandomCascadeSlowing(false);
+    setRandomCascadeBusy(false);
+    setRandomCascadeSpinMs(1100);
+    const rev = randomCascadeRevertRef.current;
+    randomCascadeRevertRef.current = null;
+    if (rev) {
+      setActiveNums(rev.manual ?? new Set());
+      setRandomNums(rev.random ?? new Set());
+    }
+    setRandomCascadeResync((x) => x + 1);
+  }, [honeycombVisible]);
+
+  /** Linear random-ring deceleration: fast at start, linearly toward near-stop. */
+  useEffect(() => {
+    if (!randomCascadeRingActive || !randomCascadeSlowing) return undefined;
+    const startMs = 1100;
+    /** Same feel, just slower overall by phase end. */
+    const endMs = 1500;
+    const rampMs = Math.max(300, randomCascadeRampMs);
+    let rafId = 0;
+    const t0 = performance.now();
+    const tick = () => {
+      const elapsed = performance.now() - t0;
+      const p = Math.min(1, elapsed / rampMs);
+      setRandomCascadeSpinMs(Math.round(startMs + (endMs - startMs) * p));
+      if (p < 1) rafId = requestAnimationFrame(tick);
+    };
+    setRandomCascadeSpinMs(startMs);
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [randomCascadeRingActive, randomCascadeSlowing, randomCascadeRampMs]);
 
   const savedSelectedIndex = useMemo(() => {
     if (!selectedSavedId) return -1;
@@ -1766,9 +2060,13 @@ export default function App() {
     currentRow >= 0 ||
     selectedSavedId !== null ||
     activeNums.size > 0 ||
+    randomNums.size > 0 ||
     rowGlobalNums.size > 0 ||
     frequencyIdx > 0;
-  const hasManualClear = activeNums.size > 0;
+  const hasManualClear = activeNums.size > 0 || randomNums.size > 0;
+  const hasExpandButton = savedRows.length > 0;
+  const hasRightBottomControls = manualCount > 0 || savedRows.length > 0;
+  const showSaveButton = manualCount > 0 && !randomCascadeBusy;
   const topDraw = currentRow >= 0 ? ROWS[currentRow] : ROWS[0] ?? null;
   const topRowColor = ROW_COLORS[(currentRow >= 0 ? currentRow : 0) % ROW_COLORS.length];
   /** Date + jackpot in toolbar only when a winning row is selected (saved-only → blank). */
@@ -2012,7 +2310,7 @@ export default function App() {
                   const info = numBrightness[n];
                   const isOn = Boolean(info);
                   const isBlocked =
-                    manualLimitReached && !activeNums.has(n) && !rowGlobalNums.has(n);
+                    manualLimitReached && !activeNums.has(n) && !randomNums.has(n) && !rowGlobalNums.has(n);
                   const labelColor = isBlocked
                     ? "rgba(52,54,58,0.95)"
                     : isOn
@@ -2023,7 +2321,28 @@ export default function App() {
                       key={n}
                       onClick={() => {
                         if (isBlocked) return;
-                        const willTurnOff = activeNums.has(n) || rowGlobalNums.has(n);
+                        const isManualOn = activeNums.has(n);
+                        const isRandomOn = randomNums.has(n);
+                        const isRowGlobalOn = rowGlobalNums.has(n);
+                        /** Random hit while visible => lock it in (promote to manual inset), don't turn it off. */
+                        if (!isManualOn && isRandomOn) {
+                          startHoneycombMeshWave(n, false);
+                          setActiveNums((prev) => {
+                            if (prev.has(n)) return prev;
+                            const next = new Set(prev);
+                            next.add(n);
+                            return next;
+                          });
+                          setRandomNums((prev) => {
+                            if (!prev.has(n)) return prev;
+                            const next = new Set(prev);
+                            next.delete(n);
+                            return next;
+                          });
+                          setHasUnsavedManualAdd(true);
+                          return;
+                        }
+                        const willTurnOff = isManualOn || isRowGlobalOn;
                         startHoneycombMeshWave(n, willTurnOff);
                         if (willTurnOff) {
                           /** Allow turning off row/saved toggles directly from the honeycomb. */
@@ -2034,6 +2353,12 @@ export default function App() {
                             return next;
                           });
                           setRowGlobalNums((prev) => {
+                            if (!prev.has(n)) return prev;
+                            const next = new Set(prev);
+                            next.delete(n);
+                            return next;
+                          });
+                          setRandomNums((prev) => {
                             if (!prev.has(n)) return prev;
                             const next = new Set(prev);
                             next.delete(n);
@@ -2056,7 +2381,10 @@ export default function App() {
                         fontSize: 14,
                         fontWeight: 600,
                         color: labelColor,
-                        textShadow: isBlocked || isOn ? "none" : ROW_NUM_TEXT_SHADOW_IDLE,
+                        textShadow:
+                          isBlocked || isOn || randomCascadePhaseOneActive
+                            ? "none"
+                            : ROW_NUM_TEXT_SHADOW_IDLE,
                         pointerEvents: "auto",
                         cursor: isBlocked ? "not-allowed" : "pointer"
                       }}
@@ -2313,110 +2641,31 @@ export default function App() {
               style={{
                 justifySelf: "end",
                 display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
+                position: "relative",
+                alignItems: "flex-end",
                 justifyContent: "flex-end",
-                gap: 6,
+                gap: honeycombVisible && manualCount > 0 && !hasExpandButton ? 6 : 0,
                 flexShrink: 0,
                 minHeight: 44,
                 /** Keep save controls on this lower toolbar row when honeycomb is hidden (avoid overlap with top-right minus). */
                 marginTop: 0
               }}
             >
-              <div
-                style={{
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0,
-                  flexShrink: 0,
-                  minHeight: 44
-                }}
-              >
-                {manualCount > 0 ? (
-                  <button
-                    type="button"
-                    onClick={saveManualRow}
-                    className={`save-btn${hasUnsavedManualAdd ? " save-btn--ready" : ""}`}
-                    aria-label={`Save ${manualCount} numbers to saved rows`}
-                    title={`Save ${manualCount} number${manualCount === 1 ? "" : "s"}`}
-                    style={{
-                      position: "relative",
-                      width: 44,
-                      height: 44,
-                      padding: 0,
-                      border: "none",
-                      background: "transparent",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      flexShrink: 0
-                    }}
-                  >
-                    <span className="save-btn-rot-glow" aria-hidden="true" />
-                    <svg
-                      width="44"
-                      height="44"
-                      viewBox="0 0 100 100"
-                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                      aria-hidden="true"
-                    >
-                      <polygon
-                        points="50,2 93,25 93,75 50,98 7,75 7,25"
-                        fill={HONEY_HEX_FACE_RGBA}
-                        stroke={HONEY_HEX_STROKE_RGBA}
-                        strokeWidth="4"
-                      />
-                    </svg>
-                    <span
-                      key={saveHeartBurstKey}
-                      className={`save-heart-wrap${saveHeartFilled ? " save-heart-wrap--burst" : ""}`}
-                      style={{
-                        position: "relative",
-                        zIndex: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "rgba(255,80,128,0.98)"
-                      }}
-                      aria-hidden="true"
-                    >
-                      <svg
-                        className={`save-heart-svg${saveHeartFilled ? " save-heart-svg--filled" : ""}`}
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                      </svg>
-                    </span>
-                  </button>
-                ) : null}
-                {!manualCount ? (
-                  <div
-                    aria-hidden
-                    style={{ width: 44, height: 44, flexShrink: 0, pointerEvents: "none" }}
-                  />
-                ) : null}
-              </div>
-              {savedRows.length > 0 ? (
+              {honeycombVisible ? (
                 <button
+                  ref={randomToolbarBtnRef}
+                  className={`save-btn random-btn${randomCascadeRingActive ? " save-btn--ready random-btn--ready" : ""}${randomCascadeRingFading ? " random-btn--fading" : ""}`}
                   type="button"
-                  onClick={() => setSavedOpen((prev) => !prev)}
-                  aria-label={
-                    savedOpen
-                      ? `Collapse saved numbers (${savedRows.length})`
-                      : `Expand saved numbers (${savedRows.length})`
-                  }
-                  title={
-                    savedOpen
-                      ? `Hide saved rows (${savedRows.length})`
-                      : `Show saved rows (${savedRows.length})`
-                  }
+                  disabled={randomCascadeBusy}
+                  onClick={pickRandomManual}
+                  aria-busy={randomCascadeBusy}
+                  aria-label="Pick 7 random numbers on the honeycomb"
+                  title="Random: replace manual picks with 7 random numbers"
                   style={{
-                    position: "relative",
+                    position: hasExpandButton ? "absolute" : "relative",
+                    right: hasExpandButton ? 0 : undefined,
+                    bottom: hasExpandButton ? 52 : undefined,
+                    zIndex: 1,
                     width: 44,
                     height: 44,
                     padding: 0,
@@ -2425,10 +2674,19 @@ export default function App() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: "pointer",
-                    flexShrink: 0
+                    cursor: randomCascadeBusy ? "default" : "pointer",
+                    flexShrink: 0,
+                    order: manualCount > 0 && !hasExpandButton ? 2 : 0,
+                    opacity: randomCascadeBusy ? 0.92 : 1,
+                    transform:
+                      hasExpandButton && randomToolbarLiftY
+                        ? `translateY(${randomToolbarLiftY}px)`
+                        : undefined,
+                    "--random-glow-hue": randomCascadeGlowHue,
+                    "--random-spin-ms": `${randomCascadeSpinMs}ms`
                   }}
                 >
+                  <span className="save-btn-rot-glow" aria-hidden="true" />
                   <svg
                     width="44"
                     height="44"
@@ -2443,11 +2701,162 @@ export default function App() {
                       strokeWidth="4"
                     />
                   </svg>
-                  <HexToolbarChevron
-                    pointUp={savedOpen}
-                    chevronFill={savedOpen ? SAVED_LOCK_ICON_GREEN : TOOLBAR_ACCENT_PINK}
-                  />
+                  <svg
+                    width="19"
+                    height="12"
+                    viewBox="0 0 19 12"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={{ position: "relative", zIndex: 1 }}
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M0 0.00047973V0.927061H4.13452L6.24413 3.12114L6.56588 3.44911L7.20549 2.80734L6.8927 2.47386L4.51442 0.000330891H0.453767L0 0.00047973ZM14.7857 0.00047973L4.13452 11.0805H0V12H4.51455L9.64933 6.66172L14.7857 12H19V11.0805H15.1674L10.2855 6.00181L15.1674 0.926739H19V0.00015745L18.5459 0L14.7857 0.00047973Z"
+                      fill={HONEY_HEX_LABEL}
+                    />
+                  </svg>
                 </button>
+              ) : null}
+              {hasRightBottomControls ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
+                    gap: 6,
+                    flexShrink: 0,
+                    order: manualCount > 0 && !hasExpandButton ? 1 : 0,
+                    minHeight: 44
+                  }}
+                >
+                <div
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0,
+                    flexShrink: 0,
+                    minHeight: 44
+                  }}
+                >
+                  {showSaveButton ? (
+                    <button
+                      type="button"
+                      onClick={saveManualRow}
+                      className={`save-btn${hasUnsavedManualAdd ? " save-btn--ready" : ""}`}
+                      aria-label={`Save ${manualCount} numbers to saved rows`}
+                      title={`Save ${manualCount} number${manualCount === 1 ? "" : "s"}`}
+                      style={{
+                        position: "relative",
+                        width: 44,
+                        height: 44,
+                        padding: 0,
+                        border: "none",
+                        background: "transparent",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0
+                      }}
+                    >
+                      <span className="save-btn-rot-glow" aria-hidden="true" />
+                      <svg
+                        width="44"
+                        height="44"
+                        viewBox="0 0 100 100"
+                        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                        aria-hidden="true"
+                      >
+                        <polygon
+                          points="50,2 93,25 93,75 50,98 7,75 7,25"
+                          fill={HONEY_HEX_FACE_RGBA}
+                          stroke={HONEY_HEX_STROKE_RGBA}
+                          strokeWidth="4"
+                        />
+                      </svg>
+                      <span
+                        key={saveHeartBurstKey}
+                        className={`save-heart-wrap${saveHeartFilled ? " save-heart-wrap--burst" : ""}`}
+                        style={{
+                          position: "relative",
+                          zIndex: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "rgba(255,80,128,0.98)"
+                        }}
+                        aria-hidden="true"
+                      >
+                        <svg
+                          className={`save-heart-svg${saveHeartFilled ? " save-heart-svg--filled" : ""}`}
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
+                      </span>
+                    </button>
+                  ) : null}
+                  {!showSaveButton ? (
+                    <div
+                      aria-hidden
+                      style={{ width: 44, height: 44, flexShrink: 0, pointerEvents: "none" }}
+                    />
+                  ) : null}
+                </div>
+                {savedRows.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setSavedOpen((prev) => !prev)}
+                    aria-label={
+                      savedOpen
+                        ? `Collapse saved numbers (${savedRows.length})`
+                        : `Expand saved numbers (${savedRows.length})`
+                    }
+                    title={
+                      savedOpen
+                        ? `Hide saved rows (${savedRows.length})`
+                        : `Show saved rows (${savedRows.length})`
+                    }
+                    style={{
+                      position: "relative",
+                      width: 44,
+                      height: 44,
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      flexShrink: 0
+                    }}
+                  >
+                    <svg
+                      width="44"
+                      height="44"
+                      viewBox="0 0 100 100"
+                      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                      aria-hidden="true"
+                    >
+                      <polygon
+                        points="50,2 93,25 93,75 50,98 7,75 7,25"
+                        fill={HONEY_HEX_FACE_RGBA}
+                        stroke={HONEY_HEX_STROKE_RGBA}
+                        strokeWidth="4"
+                      />
+                    </svg>
+                    <HexToolbarChevron
+                      pointUp={savedOpen}
+                      chevronFill={savedOpen ? SAVED_LOCK_ICON_GREEN : TOOLBAR_ACCENT_PINK}
+                    />
+                  </button>
+                ) : null}
+                </div>
               ) : null}
             </div>
           </div>
