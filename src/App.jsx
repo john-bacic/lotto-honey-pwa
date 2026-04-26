@@ -395,7 +395,7 @@ function bfsHoneyDistances(origin, gridRows) {
   return { distMap, maxD };
 }
 
-function NavButton({ dir, arrowColor, onNav, dimmed = false }) {
+function NavButton({ dir, arrowColor, onNav, dimmed = false, visualFilter }) {
   const timerRef = useRef(null);
   const intervalRef = useRef(null);
   function startHold() {
@@ -424,6 +424,7 @@ function NavButton({ dir, arrowColor, onNav, dimmed = false }) {
       style={{
         background: dimmed ? "rgba(var(--c-ink),0.015)" : "rgba(var(--c-ink),0.03)",
         border: `1.5px solid ${dimmed ? "rgba(var(--c-ink),0.08)" : `${arrowColor}50`}`,
+        filter: visualFilter,
         width: 100,
         height: 42,
         borderRadius: 999,
@@ -2043,6 +2044,8 @@ export default function App() {
       : currentRow >= 0
         ? ROW_COLORS[currentRow % ROW_COLORS.length]
         : HONEY_HEX_LABEL;
+  /** Keep low-contrast light-mode accents readable on white-ish nav backgrounds. */
+  const lightModeAccentFilter = themeMode === "light" ? "brightness(0.62) saturate(1.18)" : undefined;
   const atTopBoundary =
     savedSelectedIndex >= 0 ? savedSelectedIndex === 0 : currentRow === 0;
   const atBottomBoundary =
@@ -2828,7 +2831,7 @@ export default function App() {
                 whiteSpace: toolbarHeader.whiteSpace,
                 textShadow: ROW_NUM_TEXT_SHADOW_IDLE,
                 /** Light mode: bright row colors wash out on the white pinned-bg, so darken in place. */
-                filter: themeMode === "light" ? "brightness(0.62) saturate(1.18)" : undefined
+                filter: lightModeAccentFilter
               }}
               title={toolbarHeader.title}
             >
@@ -3596,7 +3599,13 @@ export default function App() {
                 paddingBottom: 6
               }}
             >
-              <NavButton dir={-1} arrowColor={arrowColor} onNav={bottomNavArrowNav} dimmed={atTopBoundary} />
+              <NavButton
+                dir={-1}
+                arrowColor={arrowColor}
+                onNav={bottomNavArrowNav}
+                dimmed={atTopBoundary}
+                visualFilter={lightModeAccentFilter}
+              />
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 60, justifyContent: "center" }}>
                 {savedSelectedIndex >= 0 ? (
                   <>
@@ -3640,7 +3649,13 @@ export default function App() {
                   <span style={{ fontSize: 11, color: "rgba(var(--c-ink),0.2)" }}>-</span>
                 )}
               </div>
-              <NavButton dir={1} arrowColor={arrowColor} onNav={bottomNavArrowNav} dimmed={atBottomBoundary} />
+              <NavButton
+                dir={1}
+                arrowColor={arrowColor}
+                onNav={bottomNavArrowNav}
+                dimmed={atBottomBoundary}
+                visualFilter={lightModeAccentFilter}
+              />
             </div>
           </div>
       )}
