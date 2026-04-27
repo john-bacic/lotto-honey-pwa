@@ -177,6 +177,19 @@ body {
   transition-duration: 440ms;
 }
 
+html[data-theme="light"] .random-btn .save-btn-rot-glow {
+  background: conic-gradient(
+    from var(--hex-angle),
+    hsla(var(--random-glow-hue, 0), 95%, 44%, 0) 0deg,
+    hsla(var(--random-glow-hue, 0), 98%, 50%, 1) 60deg,
+    hsla(var(--random-glow-hue, 0), 95%, 44%, 0) 140deg,
+    hsla(var(--random-glow-hue, 0), 95%, 44%, 0) 220deg,
+    hsla(var(--random-glow-hue, 0), 98%, 50%, 1) 300deg,
+    hsla(var(--random-glow-hue, 0), 95%, 44%, 0) 360deg
+  );
+  filter: blur(2.4px) saturate(1.2);
+}
+
 .random-btn--ready .save-btn-rot-glow {
   opacity: 1;
   /* One 360deg sweep per random run (no repeated looping). */
