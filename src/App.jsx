@@ -166,11 +166,75 @@ function spectrumT(num, totalCells) {
   return totalCells <= 1 ? 0 : i / (totalCells - 1);
 }
 
+function clamp01(x) {
+  return Math.max(0, Math.min(1, x));
+}
+
+function hexToRgb01(hex) {
+  const x = hex.replace("#", "");
+  return {
+    r: parseInt(x.slice(0, 2), 16) / 255,
+    g: parseInt(x.slice(2, 4), 16) / 255,
+    b: parseInt(x.slice(4, 6), 16) / 255
+  };
+}
+
+function rgb01ToHex({ r, g, b }) {
+  const rr = Math.round(clamp01(r) * 255);
+  const gg = Math.round(clamp01(g) * 255);
+  const bb = Math.round(clamp01(b) * 255);
+  return `#${rr.toString(16).padStart(2, "0")}${gg.toString(16).padStart(2, "0")}${bb.toString(16).padStart(2, "0")}`;
+}
+
+function srgbToLinear(v) {
+  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+}
+
+function relativeLuminance(hex) {
+  const { r, g, b } = hexToRgb01(hex);
+  const rl = srgbToLinear(r);
+  const gl = srgbToLinear(g);
+  const bl = srgbToLinear(b);
+  return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
+}
+
+/** Contrast ratio against black text (#000). */
+function contrastWithBlack(hex) {
+  const lBg = relativeLuminance(hex);
+  return (lBg + 0.05) / 0.05;
+}
+
+function mixTowardWhite(hex, t) {
+  const { r, g, b } = hexToRgb01(hex);
+  return rgb01ToHex({
+    r: r + (1 - r) * clamp01(t),
+    g: g + (1 - g) * clamp01(t),
+    b: b + (1 - b) * clamp01(t)
+  });
+}
+
+/**
+ * Preserve hue-family as much as possible:
+ * only lighten colors that fail contrast with black.
+ */
+function ensureContrastWithBlack(hex, minRatio = 4.5) {
+  if (contrastWithBlack(hex) >= minRatio) return hex;
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 14; i += 1) {
+    const mid = (lo + hi) / 2;
+    const candidate = mixTowardWhite(hex, mid);
+    if (contrastWithBlack(candidate) >= minRatio) hi = mid;
+    else lo = mid;
+  }
+  return mixTowardWhite(hex, hi);
+}
+
 /** Full hue sweep so ball 1…N maps to a smooth spectrum across the active grid (50 or 52). */
 function spectrumHexForNum(num, totalCells) {
   const c = new THREE.Color();
   c.setHSL(spectrumT(num, totalCells), 0.82, 0.46);
-  return `#${c.getHexString()}`;
+  return ensureContrastWithBlack(`#${c.getHexString()}`, 4.5);
 }
 
 function themeRgba(hex, a) {
@@ -182,8 +246,7 @@ function themeRgba(hex, a) {
 }
 
 function spectrumSpecColorsForNum(n, totalCells, THREE_) {
-  const t = spectrumT(n, totalCells);
-  const specColor = new THREE_.Color().setHSL(t, 0.82, 0.46);
+  const specColor = new THREE_.Color(spectrumHexForNum(n, totalCells));
   const specBorder = specColor.clone();
   const hsl = { h: 0, s: 0, l: 0 };
   specBorder.getHSL(hsl);
