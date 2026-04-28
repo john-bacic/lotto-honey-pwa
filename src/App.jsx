@@ -101,6 +101,10 @@ function honeyWaveTotalDurationMs(maxD) {
 
 const ONION_LEVELS = [2, 3, 5, 8, 13, 21];
 const FREQUENCY_LEVELS = [8, 13, 21, 34, 55, 89, 144, 233];
+/** Index right after the trailing `${oldestDrawCount}d` "all" option in the frequency dropdown. */
+const FREQUENCY_XY_INDEX = FREQUENCY_LEVELS.length + 2;
+/** Brightness of "around" hex neighbors when a single number is selected in x+y mode. */
+const XY_AROUND_BRIGHTNESS = 0.35;
 
 /**
  * Inner onion rows (depth ≥ 1): brightness b linear from ONION_INNER_BRIGHT_TOP (75%) at the
@@ -363,6 +367,27 @@ function getPositions(gridRows) {
     }
   }
   return pos;
+}
+
+/**
+ * Map num → adjacent honeycomb cell numbers (direct hex neighbors only) for the active grid.
+ * Center-distance threshold catches both same-row and cross-row neighbors.
+ */
+function buildHexNeighborsByNum(gridRows) {
+  const positions = getPositions(gridRows);
+  const threshold = COL_S * 1.1;
+  const result = {};
+  for (let i = 0; i < positions.length; i += 1) {
+    const p = positions[i];
+    const neighbors = [];
+    for (let j = 0; j < positions.length; j += 1) {
+      if (i === j) continue;
+      const q = positions[j];
+      if (Math.hypot(p.x - q.x, p.y - q.y) <= threshold) neighbors.push(q.num);
+    }
+    result[p.num] = neighbors;
+  }
+  return result;
 }
 
 function getGridSize(gridRows) {
@@ -1062,8 +1087,9 @@ export default function App() {
 
   const onionCount = onionIdx === 0 ? 0 : ONION_LEVELS[onionIdx - 1];
   const oldestDrawCount = ROWS.length;
+  const frequencyXyMode = frequencyIdx === FREQUENCY_XY_INDEX;
   const selectedFrequencyWindow =
-    frequencyIdx === 0
+    frequencyIdx === 0 || frequencyXyMode
       ? 0
       : frequencyIdx <= FREQUENCY_LEVELS.length
         ? FREQUENCY_LEVELS[frequencyIdx - 1]
@@ -1071,9 +1097,11 @@ export default function App() {
   const frequencyDisplay =
     frequencyIdx === 0
       ? null
-      : frequencyIdx <= FREQUENCY_LEVELS.length
-        ? String(FREQUENCY_LEVELS[frequencyIdx - 1])
-        : String(oldestDrawCount);
+      : frequencyXyMode
+        ? "x+y"
+        : frequencyIdx <= FREQUENCY_LEVELS.length
+          ? String(FREQUENCY_LEVELS[frequencyIdx - 1])
+          : String(oldestDrawCount);
   const frequencyGroups = useMemo(() => {
     if (selectedFrequencyWindow <= 0) return null;
     const windowRows = ROWS.slice(0, Math.min(selectedFrequencyWindow, ROWS.length));
@@ -1103,6 +1131,21 @@ export default function App() {
     return { groups, maxNumInWindow };
   }, [selectedFrequencyWindow, oldestDrawCount]);
 
+  /** All-rows pair co-occurrence count, keyed `${minNum}-${maxNum}`. */
+  const pairFrequencyMap = useMemo(() => {
+    const m = new Map();
+    ROWS.forEach((row) => {
+      const sorted = row.nums.slice().sort((a, b) => a - b);
+      for (let i = 0; i < sorted.length; i += 1) {
+        for (let j = i + 1; j < sorted.length; j += 1) {
+          const key = `${sorted[i]}-${sorted[j]}`;
+          m.set(key, (m.get(key) || 0) + 1);
+        }
+      }
+    });
+    return m;
+  }, []);
+
   const gridMode = useMemo(() => {
     if (currentRow < 0) return 52;
     const count = Math.max(onionCount, 1);
@@ -1114,6 +1157,72 @@ export default function App() {
 
   const gridRows = gridMode === 52 ? GRID_52 : GRID_50;
   const totalCells = gridMode === 52 ? 52 : 50;
+
+  const hexNeighborsByNum = useMemo(() => buildHexNeighborsByNum(gridRows), [gridRows]);
+
+  /** Manually selected numbers ("toggled on") used by x+y mode. */
+  const xySelectedSet = useMemo(() => {
+    const s = new Set();
+    activeNums.forEach((n) => {
+      if (n >= 1 && n <= totalCells) s.add(n);
+    });
+    randomNums.forEach((n) => {
+      if (n >= 1 && n <= totalCells) s.add(n);
+    });
+    rowGlobalNums.forEach((n) => {
+      if (n >= 1 && n <= totalCells) s.add(n);
+    });
+    return s;
+  }, [activeNums, randomNums, rowGlobalNums, totalCells]);
+
+  const frequencyPairsView = useMemo(() => {
+    if (!frequencyXyMode) return null;
+    const selected = Array.from(xySelectedSet).sort((a, b) => a - b);
+    if (selected.length === 0) return { kind: "empty" };
+    if (selected.length === 1) {
+      const x = selected[0];
+      const itemsByCount = new Map();
+      let maxCount = 0;
+      for (let y = 1; y <= totalCells; y += 1) {
+        if (y === x) continue;
+        const a = Math.min(x, y);
+        const b = Math.max(x, y);
+        const c = pairFrequencyMap.get(`${a}-${b}`) || 0;
+        if (!itemsByCount.has(c)) itemsByCount.set(c, []);
+        itemsByCount.get(c).push(y);
+        if (c > maxCount) maxCount = c;
+      }
+      const groups = [];
+      for (let c = maxCount; c >= 0; c -= 1) {
+        const nums = itemsByCount.get(c);
+        if (nums && nums.length > 0) groups.push({ count: c, nums: nums.slice().sort((a, b) => a - b) });
+      }
+      return { kind: "single", x, groups };
+    }
+    const pairsByCount = new Map();
+    let maxPairCount = 0;
+    for (let i = 0; i < selected.length; i += 1) {
+      for (let j = i + 1; j < selected.length; j += 1) {
+        const a = selected[i];
+        const b = selected[j];
+        const c = pairFrequencyMap.get(`${a}-${b}`) || 0;
+        if (!pairsByCount.has(c)) pairsByCount.set(c, []);
+        pairsByCount.get(c).push({ a, b });
+        if (c > maxPairCount) maxPairCount = c;
+      }
+    }
+    const groups = [];
+    for (let c = maxPairCount; c >= 0; c -= 1) {
+      const pairs = pairsByCount.get(c);
+      if (pairs && pairs.length > 0) {
+        groups.push({
+          count: c,
+          pairs: pairs.slice().sort((p, q) => p.a - q.a || p.b - q.b)
+        });
+      }
+    }
+    return { kind: "multi", selected, groups };
+  }, [frequencyXyMode, xySelectedSet, pairFrequencyMap, totalCells]);
 
   useLayoutEffect(() => {
     if (!honeycombVisible) {
@@ -1300,6 +1409,17 @@ export default function App() {
       });
     }
 
+    /** x+y mode: when exactly one number is selected, dim-light its honeycomb hex neighbors ("around"). */
+    if (frequencyXyMode && xySelectedSet.size === 1) {
+      const [only] = xySelectedSet;
+      const neighbors = hexNeighborsByNum[only] || [];
+      neighbors.forEach((n) => {
+        if (n >= 1 && n <= totalCells && (!map[n] || map[n].brightness < XY_AROUND_BRIGHTNESS)) {
+          map[n] = { brightness: XY_AROUND_BRIGHTNESS };
+        }
+      });
+    }
+
     return map;
   }, [
     honeycombVisible,
@@ -1312,7 +1432,10 @@ export default function App() {
     savedRows,
     selectedSavedId,
     currentRow,
-    selectionRevealNums
+    selectionRevealNums,
+    frequencyXyMode,
+    xySelectedSet,
+    hexNeighborsByNum
   ]);
 
   useEffect(() => {
@@ -2820,10 +2943,10 @@ export default function App() {
                           top: "50%",
                           transform: "translateY(-50%)",
                           zIndex: 1,
-                          fontSize: 12,
+                          fontSize: frequencyXyMode ? 11 : 12,
                           fontWeight: 700,
                           fontFamily: "'Outfit', -apple-system, sans-serif",
-                          letterSpacing: "-0.03em",
+                          letterSpacing: frequencyXyMode ? "-0.06em" : "-0.03em",
                           textAlign: "center",
                           color: FREQUENCY_LIGHT_PURPLE,
                           pointerEvents: "none",
@@ -2874,6 +2997,7 @@ export default function App() {
                       </option>
                     ))}
                     <option value={FREQUENCY_LEVELS.length + 1}>{oldestDrawCount}d</option>
+                    <option value={FREQUENCY_XY_INDEX}>x+y</option>
                   </select>
                 </div>
               </div>
@@ -3297,6 +3421,281 @@ export default function App() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {frequencyXyMode && frequencyPairsView && (
+        <div style={{ flexShrink: 0 }}>
+          <div
+            ref={frequencyTitleRef}
+            style={{
+              ...SECTION_LIST_LABEL_STYLE,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10
+            }}
+          >
+            <span>
+              {frequencyPairsView.kind === "single"
+                ? "Pairs with selected"
+                : frequencyPairsView.kind === "multi"
+                  ? "Selected pairs"
+                  : "Pairs"}
+            </span>
+          </div>
+          {frequencyPairsView.kind === "empty" ? (
+            <div
+              style={{
+                padding: "8px 14px 12px",
+                fontSize: 12,
+                fontWeight: 400,
+                color: "rgba(var(--c-ink),0.45)",
+                lineHeight: 1.4
+              }}
+            >
+              Tap one number on the honeycomb to see its co-occurrence with every other number, or two or more to see selected-pair frequencies.
+            </div>
+          ) : (
+            <div
+              style={{
+                flexShrink: 0,
+                paddingTop: SECTION_LIST_ROWS_PADDING_TOP + 4,
+                paddingRight: 14,
+                paddingBottom: 6,
+                paddingLeft: 0,
+                marginLeft: -6
+              }}
+            >
+              {frequencyPairsView.kind === "single" &&
+                frequencyPairsView.groups.map(({ count, nums }) => (
+                  <div
+                    key={`xy-single-${count}`}
+                    style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}
+                  >
+                    <div
+                      style={{
+                        width: 52,
+                        height: 24,
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        fontSize: 13,
+                        fontWeight: 400,
+                        letterSpacing: "-0.01em",
+                        color: FREQUENCY_LIGHT_PURPLE,
+                        lineHeight: 1,
+                        fontFamily:
+                          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
+                        fontVariantNumeric: "tabular-nums"
+                      }}
+                    >
+                      {count}x:
+                    </div>
+                    <div
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        gap: 3,
+                        minHeight: 24
+                      }}
+                    >
+                      {nums.map((n, idx) => {
+                        const nColor = spectrumHexForNum(n, totalCells);
+                        const isZero = count === 0;
+                        const litByManualToggle =
+                          n >= 1 && n <= totalCells && (activeNums.has(n) || rowGlobalNums.has(n));
+                        const litForChip = Boolean(numBrightness[n]) || litByManualToggle;
+                        const showChip = litForChip && (!isZero || litByManualToggle);
+                        return (
+                          <div
+                            key={`xy-single-${count}-${n}`}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 3 }}
+                          >
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                requestAnimationFrame(() => {
+                                  requestAnimationFrame(() => scrollFrequencyTitleIntoView("smooth"));
+                                });
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  requestAnimationFrame(() => {
+                                    requestAnimationFrame(() => scrollFrequencyTitleIntoView("smooth"));
+                                  });
+                                }
+                              }}
+                              style={{
+                                width: "auto",
+                                minWidth: 21,
+                                height: 24,
+                                padding: "0 0",
+                                borderRadius: showChip ? 7 : 0,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: 13,
+                                fontWeight: 400,
+                                letterSpacing: "-0.01em",
+                                color: showChip
+                                  ? "#000000"
+                                  : isZero
+                                    ? TOOLBAR_ACCENT_PINK
+                                    : "rgba(var(--c-freq-chip-ink),0.9)",
+                                background: showChip ? themeRgba(nColor, 0.9) : "transparent",
+                                lineHeight: 1,
+                                fontFamily:
+                                  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
+                                cursor: "pointer"
+                              }}
+                            >
+                              {n}
+                            </span>
+                            {idx < nums.length - 1 ? (
+                              <span
+                                style={{
+                                  color: "rgba(var(--c-freq-chip-ink),0.85)",
+                                  fontSize: 14,
+                                  lineHeight: 1,
+                                  fontFamily:
+                                    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
+                                }}
+                              >
+                                ·
+                              </span>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              {frequencyPairsView.kind === "multi" &&
+                frequencyPairsView.groups.map(({ count, pairs }) => (
+                  <div
+                    key={`xy-multi-${count}`}
+                    style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}
+                  >
+                    <div
+                      style={{
+                        width: 52,
+                        height: 24,
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        fontSize: 13,
+                        fontWeight: 400,
+                        letterSpacing: "-0.01em",
+                        color: FREQUENCY_LIGHT_PURPLE,
+                        lineHeight: 1,
+                        fontFamily:
+                          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
+                        fontVariantNumeric: "tabular-nums"
+                      }}
+                    >
+                      {count}x:
+                    </div>
+                    <div
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        gap: 6,
+                        minHeight: 24
+                      }}
+                    >
+                      {pairs.map(({ a, b }, idx) => {
+                        const aColor = spectrumHexForNum(a, totalCells);
+                        const bColor = spectrumHexForNum(b, totalCells);
+                        return (
+                          <div
+                            key={`xy-multi-${count}-${a}-${b}`}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 2 }}
+                          >
+                            <span
+                              style={{
+                                minWidth: 21,
+                                height: 24,
+                                borderRadius: 7,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "0 4px",
+                                fontSize: 13,
+                                fontWeight: 400,
+                                letterSpacing: "-0.01em",
+                                color: "#000000",
+                                background: themeRgba(aColor, 0.9),
+                                lineHeight: 1,
+                                fontFamily:
+                                  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
+                              }}
+                            >
+                              {a}
+                            </span>
+                            <span
+                              style={{
+                                color: "rgba(var(--c-freq-chip-ink),0.7)",
+                                fontSize: 12,
+                                lineHeight: 1,
+                                fontFamily:
+                                  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
+                              }}
+                            >
+                              –
+                            </span>
+                            <span
+                              style={{
+                                minWidth: 21,
+                                height: 24,
+                                borderRadius: 7,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "0 4px",
+                                fontSize: 13,
+                                fontWeight: 400,
+                                letterSpacing: "-0.01em",
+                                color: "#000000",
+                                background: themeRgba(bColor, 0.9),
+                                lineHeight: 1,
+                                fontFamily:
+                                  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
+                              }}
+                            >
+                              {b}
+                            </span>
+                            {idx < pairs.length - 1 ? (
+                              <span
+                                style={{
+                                  marginLeft: 4,
+                                  color: "rgba(var(--c-freq-chip-ink),0.55)",
+                                  fontSize: 14,
+                                  lineHeight: 1,
+                                  fontFamily:
+                                    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
+                                }}
+                              >
+                                ·
+                              </span>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
 
